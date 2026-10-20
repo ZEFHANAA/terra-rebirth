@@ -1,0 +1,15 @@
+# Godot 4 cache / hasil impor
+.godot/
+*.translation
+
+# Build & ekspor (di-host terpisah di branch gh-pages)
+build/
+export/
+*.pck
+*.wasm
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
