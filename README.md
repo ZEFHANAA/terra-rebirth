@@ -12,6 +12,22 @@ Tidak perlu instalasi apa pun — cukup buka tautannya di Chrome/Firefox (deskto
 
 Untuk mencoba versi terbaru dari kode sumber, lihat bagian [Cara menjalankan](#1-cara-menjalankan) di bawah.
 
+## Tangkapan layar
+
+| Layar judul | Kota Unggul (hub) |
+|---|---|
+| ![Layar judul](dokumentasi/title.png) | ![Hub kota](dokumentasi/hub.png) |
+
+| Eksplorasi Hutan | Tantangan / kuis |
+|---|---|
+| ![Eksplorasi](dokumentasi/play.png) | ![Kuis](dokumentasi/puzzle.png) |
+
+| Peta wilayah | Instrumen riset (SUS) |
+|---|---|
+| ![Peta](dokumentasi/map.png) | ![Riset](dokumentasi/research.png) |
+
+Video demo 85 detik: [`dokumentasi/gameplay-tour.mp4`](dokumentasi/gameplay-tour.mp4)
+
 ---
 
 ## 1. Cara menjalankan
