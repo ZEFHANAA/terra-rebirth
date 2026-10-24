@@ -1,0 +1,7 @@
+Project Terra Rebirth (Godot)
+============================
+
+Buka build/web/jalankan-web.bat (Windows) atau jalankan-web.sh (Linux/Mac),
+lalu buka http://localhost:8000 di browser.
+
+Panduan lengkap: README.md
