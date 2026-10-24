@@ -100,15 +100,26 @@ func open(npc_name: String, role: String, lines: Array, sprite_key: String = "")
 
 
 func _set_portrait(sprite_key: String) -> void:
-	var path := "res://assets/sprites/hero.png"
+	var path := "res://assets/sprites/mc/portrait.png"
 	if sprite_key != "":
 		path = "res://assets/sprites/npc_%s.png" % sprite_key
 	if not ResourceLoader.exists(path):
-		path = "res://assets/sprites/hero.png"
+		path = "res://assets/sprites/mc/portrait.png"
 	var tex: Texture2D = load(path)
+	if path.ends_with("portrait.png"):
+		# Potret MC berupa satu gambar utuh (bukan spritesheet).
+		_portrait.texture = tex
+		return
+	# Ambil SATU frame dari sheet, bukan seluruh sheet. Sheet hero 384x576
+	# (frame 96x144); sheet NPC baru 72x128 (3 kolom x 4 baris, frame 24x32).
+	var fw := 96.0
+	var fh := 144.0
+	if tex.get_width() < 384:
+		fw = float(tex.get_width()) / 3.0
+		fh = float(tex.get_height()) / 4.0
 	var at := AtlasTexture.new()
 	at.atlas = tex
-	at.region = Rect2(0, 0, 96, 144)
+	at.region = Rect2(0, 0, fw, fh)
 	_portrait.texture = at
 
 
@@ -143,6 +154,7 @@ func is_typing() -> bool:
 func advance() -> void:
 	if not visible:
 		return
+	Game.sfx("sfx_click", -11.0)
 	if _typing:
 		_typing = false
 		_text.visible_characters = -1

@@ -15,6 +15,11 @@ cd /home/ubuntu/terra-godot
 rm -f "$OUT"
 DISPLAY=:99 TERRA_DEMO="$DEMO" TERRA_MAP="$MAP" TERRA_SHOT="$OUT" TERRA_SHOT_DELAY="$DELAY" \
 	"$GODOT" --path /home/ubuntu/terra-godot --resolution 1280x720 > "/tmp/godot_${DEMO}.log" 2>&1
+
+# bersihkan berkas demo supaya folder pengguna tetap rapi
+D="$HOME/.local/share/godot/app_userdata/Terra Rebirth"
+rm -f "$D/records_demo.json" "$D/save_demo.json"
+
 echo "captured $OUT"
 grep -iE "^SCRIPT ERROR|^ERROR" "/tmp/godot_${DEMO}.log" | head -5
 exit 0

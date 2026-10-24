@@ -10,7 +10,14 @@ from PIL import Image, ImageDraw, ImageFilter
 import json, os, random, math
 
 W, H, T = 40, 22, 16
-OUT = "assets/maps"
+OUT = os.environ.get("MAP_OUT", "assets/maps")
+## FLAT=1 -> gaya datar 2D (tampak atas, tanpa perspektif/bayangan); FLAT=0 -> gaya 3/4 lama.
+FLAT = os.environ.get("FLAT", "1") == "1"
+## UPSCALE=n -> gambar digambar pada grid 16 px lalu diperbesar n kali (n=3 -> 48 px/tile).
+UPSCALE = int(os.environ.get("UPSCALE", "3"))
+## NOBAKE=1 -> PNG peta tanpa properti (pohon/gedung), karena digambar sebagai
+## sprite dari <map>.props.json (dibuat tools/map_props.py).
+NOBAKE = os.environ.get("NOBAKE", "1") == "1"
 os.makedirs(OUT, exist_ok=True)
 
 # ------------------------------------------------------------------ palet
@@ -157,41 +164,53 @@ def scatter_near(g, ch, n, seed, only=".", near=",", rad=3):
 
 
 def map_kota():
+    """Hub 60x36: plaza tengah, enam gedung, deret toko di barat, gerbang di timur."""
     g = blank(".")
-    border(g, "T")
-    fill(g, 0, 1, W - 1, 1, "T")
-    fill(g, 0, H - 2, W - 1, H - 2, "T")
-    fill(g, 1, 0, 1, H - 1, "T")
-    fill(g, W - 2, 0, W - 2, H - 1, "T")
+    for i in range(2):
+        fill(g, i, i, W - 1 - i, i, "T")
+        fill(g, i, H - 1 - i, W - 1 - i, H - 1 - i, "T")
+        fill(g, i, i, i, H - 1 - i, "T")
+        fill(g, W - 1 - i, i, W - 1 - i, H - 1 - i, "T")
 
-    fill(g, 4, 10, 35, 11, ",")
-    fill(g, 20, 4, 21, H - 3, ",")
-    fill(g, 15, 6, 26, 15, "S")
-    fill(g, 18, 8, 23, 13, "W")
-    fill(g, 19, 9, 22, 12, "S")
+    # jalan utama: horizontal (barat-timur) dan vertikal (utara-selatan)
+    fill(g, 4, 18, 55, 20, ",")
+    fill(g, 29, 5, 31, 32, ",")
 
-    fill(g, 4, 3, 12, 8, "B")
-    fill(g, 27, 4, 33, 8, "B")
-    fill(g, 3, 14, 8, 18, "B")
-    fill(g, 28, 14, 34, 19, "B")
+    # plaza batu + kolam di tengah
+    fill(g, 22, 10, 37, 27, "S")
+    fill(g, 27, 15, 32, 21, "W")
+    fill(g, 28, 16, 31, 20, "S")
 
-    fill(g, 8, 9, 8, 9, ",")
-    fill(g, 30, 9, 30, 9, ",")
-    fill(g, 5, 13, 5, 13, ",")
-    fill(g, 31, 13, 31, 13, ",")
-    fill(g, 2, 10, 2, 10, ",")
+    # enam gedung: balai kota, toko, kantor, gudang
+    fill(g, 5, 4, 13, 9, "B")
+    fill(g, 18, 4, 26, 9, "B")
+    fill(g, 34, 4, 42, 9, "B")
+    fill(g, 5, 26, 13, 31, "B")
+    fill(g, 34, 26, 42, 31, "B")
+    fill(g, 46, 5, 54, 10, "B")
 
-    fill(g, 36, 10, 38, 11, "O")
-    fill(g, 34, 10, 35, 11, ",")
+    # jalan penghubung gedung selebar 2 tile + apron batu di depan gedung
+    for (x0, y0, x1, y1) in [(7, 10, 9, 17), (21, 10, 23, 17), (37, 10, 39, 17),
+                             (7, 21, 9, 25), (37, 21, 39, 25), (49, 11, 51, 17)]:
+        fill(g, x0, y0, x1, y1, ",")
+    for (x0, x1, y) in [(5, 13, 10), (18, 26, 10), (34, 42, 10), (46, 54, 11),
+                        (5, 13, 25), (34, 42, 25)]:
+        fill(g, x0, y, x1, y, "S")
 
-    for (tx, ty) in [(14, 3), (16, 4), (15, 2), (24, 3), (25, 4), (23, 2),
-                     (13, 18), (15, 17), (17, 19), (24, 18), (26, 17), (22, 19),
-                     (2, 6), (2, 13), (35, 6), (35, 15)]:
-        g[ty][tx] = "T"
-    scatter_near(g, "f", 12, 13, near=",")
-    scatter(g, "f", 8, 12)
+    # gerbang keluar (portal) di ujung timur jalan utama
+    fill(g, 56, 18, 57, 20, "O")
+    fill(g, 55, 18, 55, 20, ",")
 
-    g[9][22] = "N"
+    # pohon pengisi di area terbuka + bunga di tepi jalan
+    for (tx, ty) in [(16, 2), (17, 3), (44, 2), (45, 3), (3, 14), (3, 23),
+                     (16, 32), (17, 33), (44, 32), (45, 33), (56, 5), (56, 30),
+                     (15, 15), (16, 22), (43, 15), (44, 22), (24, 33), (35, 33)]:
+        if 0 <= tx < W and 0 <= ty < H:
+            g[ty][tx] = "T"
+    scatter_near(g, "f", 26, 13, near=",")
+    scatter(g, "f", 18, 12)
+
+    g[14][30] = "N"
     return g
 
 
@@ -292,6 +311,10 @@ def map_source():
 
 MAPS = [("kota", map_kota), ("hutan", map_hutan), ("pabrik", map_pabrik),
         ("candi", map_candi), ("danau", map_danau), ("source", map_source)]
+
+## Ukuran per-map dalam tile (w, h). Kota Unggul sengaja lebih besar karena
+## menjadi hub: toko, beberapa NPC, dan area tutorial (Tabel 2.6).
+MAP_SIZE = {"kota": (60, 36)}
 
 # ------------------------------------------------------------------ dasar
 def cls(ch):
@@ -704,6 +727,39 @@ def facade(img, d, x0, y0, x1, y1, theme, rnd, kind):
     d.line([(px0 + 2, py0 + 19), (px1 - 4, py0 + 19)], fill=mix(wall_lo, (0, 0, 0), .35))
 
 
+def facade_flat(img, d, x0, y0, x1, y1, theme, rnd, kind):
+    """Bangunan gaya datar 2D: atap dilihat lurus dari atas, tanpa dinding/perspektif."""
+    th = dict(PAL[theme])
+    th["wall"] = BUILDING_SKIN[kind]["wall"]
+    th["roof"] = BUILDING_SKIN[kind]["roof"]
+    px0, py0 = x0 * T, y0 * T
+    px1, py1 = (x1 + 1) * T, (y1 + 1) * T
+    roof_lo, roof_mid, roof_hi = th["roof"]
+    pad = 2
+    box = [px0 + pad, py0 + pad, px1 - pad, py1 - pad]
+    edge = mix(roof_lo, (0, 0, 0), .45)
+    d.rectangle([box[0] - 1, box[1] - 1, box[2] + 1, box[3] + 1], fill=edge)
+    d.rectangle(box, fill=roof_mid)
+    for yy in range(box[1] + 5, box[3] - 1, 5):
+        d.line([(box[0] + 1, yy), (box[2] - 1, yy)], fill=mix(roof_mid, roof_lo, .28))
+    cy = (box[1] + box[3]) // 2
+    d.line([(box[0] + 1, cy), (box[2] - 1, cy)], fill=roof_hi)
+    d.rectangle(box, outline=mix(roof_lo, (0, 0, 0), .30))
+    cxm = (box[0] + box[2]) // 2
+    cym = (box[1] + box[3]) // 2
+    if kind == 0:
+        r = max(3, min(box[2] - box[0], box[3] - box[1]) // 5)
+        d.ellipse([cxm - r, cym - r, cxm + r, cym + r], fill=roof_hi, outline=edge)
+    elif kind == 1:
+        d.rectangle([box[0] + 4, box[1] + 4, box[0] + 9, box[1] + 9], fill=roof_hi, outline=edge)
+        d.rectangle([box[2] - 9, box[3] - 9, box[2] - 4, box[3] - 4], fill=roof_hi, outline=edge)
+    elif kind == 2:
+        d.rectangle([box[0] + 5, box[1] + 4, box[0] + 10, box[1] + 9], fill=mix(roof_hi, (255, 255, 255), .25), outline=edge)
+    else:
+        for wy in (box[1] + 4, box[3] - 9):
+            d.rectangle([cxm - 5, wy, cxm + 5, wy + 5], fill=roof_hi, outline=edge)
+
+
 # Urutan tipe bangunan per peta (sesuai urutan penemuan: atas→bawah, kiri→kanan)
 KIND_ORDER = {"kota": [0, 1, 2, 3]}
 
@@ -731,7 +787,10 @@ def paint_buildings(img, g, theme, seed):
                 else:
                     area = (x1 - x + 1) * (y1 - y + 1)
                     kind = 0 if area >= 40 else (2 if idx % 2 == 0 else 3)
-                facade(img, d, x, y, x1, y1, theme, rnd, kind)
+                if FLAT:
+                    facade_flat(img, d, x, y, x1, y1, theme, rnd, kind)
+                else:
+                    facade(img, d, x, y, x1, y1, theme, rnd, kind)
                 idx += 1
 
 
@@ -747,6 +806,8 @@ def reset_shadow():
 
 
 def shadow(cx, cy, w, h, a=70):
+    if FLAT:
+        return
     SD.ellipse([cx - w, cy - h, cx + w, cy + h], fill=(0, 0, 0, a))
 
 
@@ -913,6 +974,43 @@ def paint_props(img, g, theme, seed):
     d = ImageDraw.Draw(img, "RGBA")
     rnd = random.Random(seed + 7)
 
+    if NOBAKE:
+        # Properti (pohon, gedung, mesin) digambar scripts/world.gd sebagai
+        # sprite dari <map>.props.json; PNG peta hanya berisi tanah + kolam.
+        if theme == "kota":
+            # patung air mancur di pulau batu tengah kolam (28..31 x 16..20)
+            th = PAL[theme]
+            fx, fy = 30 * T - T // 2, 18 * T + T // 2
+            d.ellipse([fx - 14, fy - 5, fx + 14, fy + 3], fill=th["stone"][0])
+            d.rectangle([fx - 10, fy - 14, fx + 10, fy - 4], fill=th["stone"][0])
+            d.rectangle([fx - 10, fy - 14, fx + 10, fy - 11], fill=th["stone"][2])
+            d.rectangle([fx - 4, fy - 26, fx + 4, fy - 14], fill=th["stone"][1])
+            d.ellipse([fx - 6, fy - 33, fx + 6, fy - 23], fill=th["stone"][2])
+            d.point((fx - 2, fy - 29), fill=th["stone"][0])
+            d.point((fx + 3, fy - 29), fill=th["stone"][0])
+            # pancuran: air memancar lalu jatuh ke kolam
+            for r, a in ((3, 255), (2, 200)):
+                d.ellipse([fx - r, fy - 44 - r, fx + r, fy - 44 + r],
+                          fill=th["water"][3] if len(th["water"]) > 3 else th["water"][2])
+            d.arc([fx - 30, fy - 48, fx - 6, fy - 26], 195, 330, fill=th["water"][2], width=2)
+            d.arc([fx + 6, fy - 48, fx + 30, fy - 26], 210, 345, fill=th["water"][2], width=2)
+            d.line([(fx - 26, fy - 26), (fx - 26, fy - 16)], fill=th["water"][2])
+            d.line([(fx + 26, fy - 26), (fx + 26, fy - 16)], fill=th["water"][2])
+        if theme == "danau":
+            # tiang penyangga dermaga supaya tidak terlihat menempel di air
+            wood_d, wood_l = (74, 52, 34), (120, 88, 58)
+            # Lima pasang tiang di bawah sisi dermaga, sampai air.
+            # Digambar setelah air agar penyangga tidak tertutup tekstur danau.
+            for x in (20, 21, 22, 23, 24):
+                cx = x * T + T // 2
+                top = 11 * T - 8
+                bottom = 11 * T + 46
+                d.rectangle([cx - 5, top, cx + 5, bottom], fill=wood_d)
+                d.rectangle([cx - 3, top + 2, cx - 1, bottom - 1], fill=wood_l)
+                # kepala tiang menonjol sedikit melewati lantai papan.
+                d.rectangle([cx - 6, top - 3, cx + 6, top + 2], fill=wood_l)
+        return
+
     paint_buildings(img, g, theme, seed)
 
     # kolam kota digambar sebagai satu objek
@@ -998,6 +1096,8 @@ def finish(img, theme):
 
 
 def export(name, fn):
+    global W, H
+    W, H = MAP_SIZE.get(name, (40, 22))
     reset_shadow()
     g = fn()
     s = abs(hash(name)) % 9999
@@ -1005,8 +1105,18 @@ def export(name, fn):
     paint_water(img, g, name, s)
     paint_canopy(img, g, name, s)
     paint_props(img, g, name, s)
-    img = Image.alpha_composite(img, SHADOW)
-    img = finish(img, name)
+    if FLAT:
+        # Gaya datar: bayangan tetap dipakai tipis supaya objek tidak "melayang".
+        sh = SHADOW.copy()
+        sh.putalpha(sh.getchannel("A").point(lambda v: int(v * 0.40)))
+        img = Image.alpha_composite(img, sh)
+    else:
+        img = Image.alpha_composite(img, SHADOW)
+        img = finish(img, name)
+    tile = T
+    if UPSCALE > 1:
+        img = img.resize((img.width * UPSCALE, img.height * UPSCALE), Image.LANCZOS)
+        tile = T * UPSCALE
     img.save(f"{OUT}/{name}.png")
 
     solid = [[1 if ch in "#TBWXLRPC" else 0 for ch in row] for row in g]
@@ -1017,10 +1127,11 @@ def export(name, fn):
                 npc = {"x": x, "y": y}
             if g[y][x] == "O":
                 portal = {"x": x, "y": y}
-    meta = {"w": W, "h": H, "tile": T, "solid": solid, "npc": npc, "portal": portal}
+    meta = {"w": W, "h": H, "tile": tile, "solid": solid, "npc": npc, "portal": portal}
     with open(f"{OUT}/{name}.json", "w") as f:
         json.dump(meta, f)
     print("map", name, "ok")
+    W, H = 40, 22
 
 
 if __name__ == "__main__":

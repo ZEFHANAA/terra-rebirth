@@ -7,7 +7,7 @@ OUT="${1:-/tmp/rekam.mp4}"
 DUR="${2:-45}"
 DEMO="${3:-rekam}"
 GODOT=/home/ubuntu/.local/bin/godot
-FFMPEG=/home/ubuntu/.hermes/tools/ffmpeg-9.0.1-linux-x64/bin/ffmpeg
+FFMPEG=/home/ubuntu/.hermes/tools/ffmpeg-9.0.1-linux-arm64/bin/ffmpeg
 
 pkill -f "godot --path /home/ubuntu/terra-godot" 2>/dev/null
 sleep 1
@@ -26,5 +26,10 @@ GPID=$!
 wait $FPID
 kill $GPID 2>/dev/null
 wait $GPID 2>/dev/null
+
+# bersihkan berkas demo supaya folder pengguna tetap rapi
+D="$HOME/.local/share/godot/app_userdata/Terra Rebirth"
+rm -f "$D/records_demo.json" "$D/save_demo.json"
+
 echo "video: $OUT"
 ls -lh "$OUT" | awk '{print $5}'

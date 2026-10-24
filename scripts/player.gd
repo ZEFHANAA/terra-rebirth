@@ -1,13 +1,21 @@
 extends CharacterBody2D
-## Karakter pemain: gerak 4 arah + animasi jalan dari spritesheet 24x32.
+## Karakter pemain (MC) memakai aset Idle & Run dari kelompok:
+## assets/sprites/mc/idle_00..09.png dan run_00..09.png (kanvas 512x512, kaki di dasar).
+## Sprite menghadap samping, jadi arah atas/bawah tetap memakai hadap terakhir (flip_h).
 
 const SPEED := 190.0
-const DIRS := ["down", "up", "left", "right"]
+const MC_DIR := "res://assets/sprites/mc/"
+const IDLE_COUNT := 10
+const RUN_COUNT := 10
+## 512 px kanvas -> tinggi karakter tampil ~131 px (dulu 144 px), jadi 0.27.
+const MC_SCALE := 0.27
+const MC_HALF := 256.0
 
 var can_move := true
 var facing := "down"
 
 var _sprite: AnimatedSprite2D
+var _hadap := 1.0  ## 1 = menghadap kanan, -1 = kiri
 
 func _ready() -> void:
 	var shape := CollisionShape2D.new()
@@ -18,43 +26,37 @@ func _ready() -> void:
 	add_child(shape)
 
 	_sprite = AnimatedSprite2D.new()
-	_sprite.sprite_frames = _build_frames("res://assets/sprites/hero.png")
-	_sprite.animation = "idle_down"
-	_sprite.position = Vector2(0, -56)
+	_sprite.sprite_frames = _build_frames()
+	_sprite.animation = "idle"
+	_sprite.scale = Vector2(MC_SCALE, MC_SCALE)
+	# Kaki (dasar kanvas) ditempel di y = 8, sama seperti sprite lama.
+	_sprite.position = Vector2(0, 8.0 - MC_HALF * MC_SCALE)
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(_sprite)
 	z_index = 0
 
-func _build_frames(path: String) -> SpriteFrames:
+func _build_frames() -> SpriteFrames:
 	var sf := SpriteFrames.new()
 	sf.remove_animation("default")
-	var tex: Texture2D = load(path)
-	var fw := 96
-	var fh := 144
-	for row in range(DIRS.size()):
-		var dir: String = DIRS[row]
-		sf.add_animation("idle_" + dir)
-		sf.set_animation_speed("idle_" + dir, 1.0)
-		sf.set_animation_loop("idle_" + dir, true)
-		var at0 := AtlasTexture.new()
-		at0.atlas = tex
-		at0.region = Rect2(0, row * fh, fw, fh)
-		sf.add_frame("idle_" + dir, at0)
 
-		sf.add_animation("walk_" + dir)
-		sf.set_animation_speed("walk_" + dir, 9.0)
-		sf.set_animation_loop("walk_" + dir, true)
-		for col in [0, 1, 2, 3]:
-			var at := AtlasTexture.new()
-			at.atlas = tex
-			at.region = Rect2(col * fw, row * fh, fw, fh)
-			sf.add_frame("walk_" + dir, at)
+	sf.add_animation("idle")
+	sf.set_animation_speed("idle", 6.0)
+	sf.set_animation_loop("idle", true)
+	for i in range(IDLE_COUNT):
+		sf.add_frame("idle", load("%sidle_%02d.png" % [MC_DIR, i]))
+
+	sf.add_animation("run")
+	sf.set_animation_speed("run", 14.0)
+	sf.set_animation_loop("run", true)
+	for i in range(RUN_COUNT):
+		sf.add_frame("run", load("%srun_%02d.png" % [MC_DIR, i]))
 	return sf
 
 func _physics_process(_delta: float) -> void:
 	if not can_move:
 		velocity = Vector2.ZERO
 		move_and_slide()
+		_sprite.play("idle")
 		return
 
 	var v := Vector2.ZERO
@@ -73,9 +75,12 @@ func _physics_process(_delta: float) -> void:
 			facing = "right" if v.x > 0 else "left"
 		else:
 			facing = "down" if v.y > 0 else "up"
-		_sprite.play("walk_" + facing)
+		if absf(v.x) > 0.01:
+			_hadap = signf(v.x)
+		_sprite.play("run")
 	else:
-		_sprite.play("idle_" + facing)
+		_sprite.play("idle")
 
+	_sprite.flip_h = _hadap < 0.0
 	velocity = v * SPEED
 	move_and_slide()

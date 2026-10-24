@@ -9,6 +9,10 @@ export/
 *.wasm
 *.zip
 
+# Python (skrip bantu di tools/)
+__pycache__/
+*.pyc
+
 # OS / editor
 .DS_Store
 Thumbs.db

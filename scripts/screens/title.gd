@@ -152,12 +152,9 @@ func _ready() -> void:
 	shadow.offset_bottom = 158
 	add_child(shadow)
 
-	var hero_tex: Texture2D = load("res://assets/sprites/hero.png")
+	var hero_tex: Texture2D = load("res://assets/sprites/mc/portrait.png")
 	var hero := TextureRect.new()
-	var at := AtlasTexture.new()
-	at.atlas = hero_tex
-	at.region = Rect2(0, 0, 96, 144)
-	hero.texture = at
+	hero.texture = hero_tex
 	hero.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	hero.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	hero.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -177,7 +174,7 @@ func _ready() -> void:
 	brow.offset_bottom = 222
 	brow.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(brow)
-	for b in ["nature", "core", "cipher", "aqua", "guardian"]:
+	for b in ["nature", "core", "cipher", "aqua"]:
 		var ic := TextureRect.new()
 		ic.texture = load("res://assets/ui/badge_%s.png" % b)
 		ic.custom_minimum_size = Vector2(36, 36)

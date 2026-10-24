@@ -81,7 +81,7 @@ static func title(text: String, size: int = 22, color: Color = TEXT) -> Label:
 static func kicker(text: String, color: Color = MUTED, size: int = 10) -> Label:
 	return title(text.to_upper(), size, color)
 
-## Pil berisi label singkat: level, keping data, badge.
+## Pil berisi label singkat: uang dan badge.
 static func chip(text: String, color: Color = MUTED, bg: Color = Color(1, 1, 1, 0.05)) -> PanelContainer:
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()

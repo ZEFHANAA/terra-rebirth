@@ -1,17 +1,19 @@
 extends Control
-## Mode riset: pre-test, post-test, kuesioner SUS, dan rekap data.
+## Layar data pengujian: rekap peserta, ekspor CSV, dan pintu masuk asesmen.
+##
+## Tidak ada pre-test di sini. Rancangan penelitian adalah one-group
+## posttest-only (Bab III 3.1), sehingga instrumen yang dipakai hanya
+## post-test 20 soal (3.9) dan kuesioner SUS 10 butir (3.9).
 
 signal back_pressed
+signal open_asesmen
 
-const TABS := ["Pre-Test", "Post-Test", "SUS", "Rekap"]
+## Lebar tetap tiap kolom. Header dan baris memakai lebar yang sama supaya
+## GridContainer menghitung kolom identik dan judul tepat di atas datanya.
+const COL_W := [70, 150, 92, 52, 42, 42, 62, 42, 62, 54]
 
-var _tab := 0
-var _tab_row: HBoxContainer
-var _content: MarginContainer
-var _code_edit: LineEdit
-var _answers: Dictionary = {"pre": [], "post": []}
-var _sus: Array = []
-var _result: Dictionary = {"pre": -1, "post": -1, "sus": -1.0}
+var _grid: GridContainer
+var _info: Label
 var _status: Label
 
 func _ready() -> void:
@@ -23,263 +25,124 @@ func _ready() -> void:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 56)
-	margin.add_theme_constant_override("margin_right", 56)
-	margin.add_theme_constant_override("margin_top", 30)
-	margin.add_theme_constant_override("margin_bottom", 30)
+	margin.add_theme_constant_override("margin_left", 48)
+	margin.add_theme_constant_override("margin_right", 48)
+	margin.add_theme_constant_override("margin_top", 26)
+	margin.add_theme_constant_override("margin_bottom", 26)
 	add_child(margin)
 
-	var v := UiKit.vbox(14)
+	var v := UiKit.vbox(12)
 	margin.add_child(v)
 
 	var head := UiKit.hbox(14)
 	v.add_child(head)
-	head.add_child(UiKit.title("MODE RISET", 20, UiKit.TEXT))
+	var hcol := UiKit.vbox(2)
+	head.add_child(hcol)
+	hcol.add_child(UiKit.kicker("MODE PENGUJIAN", UiKit.GOLD, 10))
+	hcol.add_child(UiKit.title("DATA PESERTA", 22, UiKit.TEXT))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
-	head.add_child(UiKit.label("Kode peserta", 14, UiKit.MUTED))
-	_code_edit = LineEdit.new()
-	_code_edit.placeholder_text = "mis. P01"
-	_code_edit.text = Game.player_code
-	_code_edit.custom_minimum_size = Vector2(130, 36)
-	_code_edit.add_theme_font_size_override("font_size", 15)
-	head.add_child(_code_edit)
+	head.add_child(UiKit.label("Kode peserta diisi saat asesmen dimulai", 13, UiKit.MUTED))
 	var back := UiKit.button("Kembali  [Esc]", 14, UiKit.MUTED)
 	back.pressed.connect(func(): back_pressed.emit())
 	head.add_child(back)
 
-	_tab_row = UiKit.hbox(8)
-	v.add_child(_tab_row)
-	for i in range(TABS.size()):
-		var b := UiKit.button(TABS[i], 15)
-		var idx := i
-		b.pressed.connect(func(): _set_tab(idx))
-		_tab_row.add_child(b)
+	_info = UiKit.label("", 14, UiKit.MUTED, 1120)
+	v.add_child(_info)
 
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.07, 0.1, 0.15, 1.0), UiKit.BORDER, 12, 2))
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(panel)
 
-	_content = MarginContainer.new()
-	_content.add_theme_constant_override("margin_left", 22)
-	_content.add_theme_constant_override("margin_right", 22)
-	_content.add_theme_constant_override("margin_top", 16)
-	_content.add_theme_constant_override("margin_bottom", 16)
-	panel.add_child(_content)
-
-	_status = UiKit.label("", 14, UiKit.ACCENT)
-	v.add_child(_status)
-
-	_answers["pre"] = _empty(Content.TEST_ITEMS.size())
-	_answers["post"] = _empty(Content.TEST_ITEMS.size())
-	_sus = _empty(Content.SUS_ITEMS.size())
-	_set_tab(0)
-
-func _empty(n: int) -> Array:
-	var a: Array = []
-	for i in range(n):
-		a.append(-1)
-	return a
-
-func _set_tab(i: int) -> void:
-	_tab = i
-	for k in range(_tab_row.get_child_count()):
-		var b: Button = _tab_row.get_child(k)
-		b.add_theme_stylebox_override("normal", UiKit.panel_style(
-			UiKit.PANEL_2.lightened(0.1) if k == i else UiKit.PANEL_2,
-			UiKit.ACCENT if k == i else UiKit.BORDER, 8, 2))
-	_render()
-
-func _clear() -> void:
-	for c in _content.get_children():
-		c.queue_free()
-
-func _render() -> void:
-	_clear()
-	match _tab:
-		0:
-			_test_form("pre", "Pre-Test", "Kerjakan sebelum memainkan game. 8 soal, 2 soal per bidang.")
-		1:
-			_test_form("post", "Post-Test", "Kerjakan setelah menyelesaikan seluruh wilayah.")
-		2:
-			_sus_form()
-		3:
-			_rekap()
-
-func _test_form(key: String, title: String, desc: String) -> void:
 	var scroll := ScrollContainer.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_content.add_child(scroll)
+	panel.add_child(scroll)
 
-	var v := UiKit.vbox(14)
-	v.custom_minimum_size.x = 1080
-	scroll.add_child(v)
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left", 18)
+	pad.add_theme_constant_override("margin_right", 18)
+	pad.add_theme_constant_override("margin_top", 14)
+	pad.add_theme_constant_override("margin_bottom", 14)
+	scroll.add_child(pad)
 
-	v.add_child(UiKit.title(title.to_upper(), 14, UiKit.GOLD))
-	v.add_child(UiKit.label(desc, 15, UiKit.MUTED, 1040))
+	var col := UiKit.vbox(8)
+	pad.add_child(col)
 
-	for qi in range(Content.TEST_ITEMS.size()):
-		var item: Dictionary = Content.TEST_ITEMS[qi]
-		var box := PanelContainer.new()
-		box.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.05, 0.07, 0.11, 1.0), UiKit.BORDER, 8, 1))
-		v.add_child(box)
-		var bv := UiKit.vbox(6)
-		box.add_child(bv)
-		bv.add_child(UiKit.label("%d. %s" % [qi + 1, str(item["q"])], 15, UiKit.TEXT, 1000))
-		var group := ButtonGroup.new()
-		for oi in range((item["o"] as Array).size()):
-			var rb := CheckBox.new()
-			rb.text = str(item["o"][oi])
-			rb.button_group = group
-			rb.add_theme_font_size_override("font_size", 14)
-			rb.button_pressed = _answers[key][qi] == oi
-			var qidx := qi
-			var oidx := oi
-			rb.toggled.connect(func(on: bool):
-				if on:
-					_answers[key][qidx] = oidx
-			)
-			bv.add_child(rb)
+	var heads := ["Kode", "Tanggal", "Durasi (mnt)", "Post", "BD", "SO", "Kripto", "IoT", "Tuntas", "SUS"]
+	var head_grid := GridContainer.new()
+	head_grid.columns = 10
+	head_grid.add_theme_constant_override("h_separation", 26)
+	col.add_child(head_grid)
+	for i in range(heads.size()):
+		var hl := UiKit.label(str(heads[i]), 13, UiKit.ACCENT)
+		hl.custom_minimum_size.x = COL_W[i]
+		head_grid.add_child(hl)
+	col.add_child(UiKit.rule())
+	col.add_child(UiKit.label("BD = Basis Data · SO = Sistem Operasi · Kripto = Kriptografi · IoT = Internet of Things · Post = nilai post-test (0–100) · Tuntas = nilai ≥ 70", 12, UiKit.MUTED, 1120))
+	col.add_child(UiKit.label("Rancangan pengujian: target 30 responden purposive sampling (Bab III 3.8) · durasi sesi 60 menit untuk Map 1 sampai post-test (Bab III 3.10) · responden yang tidak menuntaskan seluruh map dicatat sebagai data tidak lengkap", 12, UiKit.MUTED, 1120))
 
-	var submit := UiKit.button("Kumpulkan %s" % title, 16)
-	submit.pressed.connect(func(): _submit_test(key))
-	v.add_child(submit)
+	_grid = GridContainer.new()
+	_grid.columns = 10
+	_grid.add_theme_constant_override("h_separation", 26)
+	_grid.add_theme_constant_override("v_separation", 8)
+	col.add_child(_grid)
 
-func _submit_test(key: String) -> void:
-	var ans: Array = _answers[key]
-	for i in range(ans.size()):
-		if int(ans[i]) < 0:
-			_status.text = "Masih ada soal yang belum dijawab."
-			_status.add_theme_color_override("font_color", UiKit.DANGER)
-			return
-	var correct := 0
-	for i in range(ans.size()):
-		if int(ans[i]) == int(Content.TEST_ITEMS[i]["a"]):
-			correct += 1
-	var score := int(round(float(correct) / float(ans.size()) * 100.0))
-	_result[key] = score
-	_status.add_theme_color_override("font_color", UiKit.ACCENT)
-	_status.text = "%s selesai: %d/%d benar (nilai %d)." % [key.capitalize(), correct, ans.size(), score]
-	_persist()
-
-func _sus_form() -> void:
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_content.add_child(scroll)
-
-	var v := UiKit.vbox(10)
-	v.custom_minimum_size.x = 1080
-	scroll.add_child(v)
-	v.add_child(UiKit.title("SYSTEM USABILITY SCALE", 14, UiKit.GOLD))
-	v.add_child(UiKit.label("1 = sangat tidak setuju · 5 = sangat setuju", 14, UiKit.MUTED))
-
-	for i in range(Content.SUS_ITEMS.size()):
-		var row := UiKit.hbox(12)
-		v.add_child(row)
-		var q := UiKit.label("%d. %s" % [i + 1, str(Content.SUS_ITEMS[i])], 15, UiKit.TEXT, 720)
-		row.add_child(q)
-		var sp := Control.new()
-		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(sp)
-		var group := ButtonGroup.new()
-		for s in range(1, 6):
-			var b := Button.new()
-			b.text = str(s)
-			b.toggle_mode = true
-			b.button_group = group
-			b.custom_minimum_size = Vector2(44, 36)
-			b.add_theme_font_size_override("font_size", 14)
-			b.add_theme_stylebox_override("normal", UiKit.panel_style(UiKit.PANEL_2, UiKit.BORDER, 6, 1))
-			b.add_theme_stylebox_override("pressed", UiKit.panel_style(Color(0.1, 0.3, 0.24), UiKit.ACCENT, 6, 2))
-			b.add_theme_stylebox_override("hover", UiKit.panel_style(UiKit.PANEL_2.lightened(0.1), UiKit.ACCENT, 6, 1))
-			b.button_pressed = _sus[i] == s
-			var qi := i
-			var sv := s
-			b.toggled.connect(func(on: bool):
-				if on:
-					_sus[qi] = sv
-			)
-			row.add_child(b)
-
-	var submit := UiKit.button("Kumpulkan SUS", 16)
-	submit.pressed.connect(_submit_sus)
-	v.add_child(submit)
-
-func _submit_sus() -> void:
-	for v in _sus:
-		if int(v) < 0:
-			_status.text = "Masih ada pernyataan yang belum dinilai."
-			_status.add_theme_color_override("font_color", UiKit.DANGER)
-			return
-	var total := 0.0
-	for i in range(_sus.size()):
-		var val := int(_sus[i])
-		if i % 2 == 0:
-			total += float(val - 1)
-		else:
-			total += float(5 - val)
-	var score := total * 2.5
-	_result["sus"] = score
-	_status.add_theme_color_override("font_color", UiKit.ACCENT)
-	_status.text = "Skor SUS: %.1f dari 100." % score
-	_persist()
-
-func _persist() -> void:
-	Game.player_code = _code_edit.text.strip_edges()
-	if Game.player_code == "":
-		_status.text = "Isi kode peserta terlebih dahulu agar data tersimpan."
-		_status.add_theme_color_override("font_color", UiKit.DANGER)
-		return
-	var pre := int(_result["pre"])
-	var post := int(_result["post"])
-	var ngain := 0.0
-	if pre >= 0 and post >= 0:
-		ngain = float(post - pre) / max(1.0, 100.0 - float(pre))
-	var rec := {
-		"kode": Game.player_code,
-		"waktu": Time.get_datetime_string_from_system(),
-		"pre": pre, "post": post,
-		"ngain": snappedf(ngain, 0.01),
-		"sus": float(_result["sus"]),
-		"xp": Game.xp,
-		"selesai": Game.total_done()
-	}
-	Game.upsert_record(Game.player_code, rec)
-	Game.save_game()
-
-func _rekap() -> void:
-	var v := UiKit.vbox(12)
-	_content.add_child(v)
-	v.add_child(UiKit.title("REKAP DATA PESERTA", 14, UiKit.GOLD))
-	var recs := Game.read_records()
-	v.add_child(UiKit.label("%d peserta tercatat. Data tersimpan di %s" % [recs.size(), ProjectSettings.globalize_path(Game.RECORD_PATH)], 14, UiKit.MUTED, 1040))
-
-	var grid := GridContainer.new()
-	grid.columns = 6
-	grid.add_theme_constant_override("h_separation", 28)
-	grid.add_theme_constant_override("v_separation", 6)
-	v.add_child(grid)
-	for h in ["Kode", "Pre", "Post", "N-gain", "SUS", "XP"]:
-		grid.add_child(UiKit.label(h, 14, UiKit.ACCENT))
-	for r in recs:
-		grid.add_child(UiKit.label(str(r.get("kode", "-")), 14, UiKit.TEXT))
-		grid.add_child(UiKit.label(str(r.get("pre", "-")), 14, UiKit.TEXT))
-		grid.add_child(UiKit.label(str(r.get("post", "-")), 14, UiKit.TEXT))
-		grid.add_child(UiKit.label("%.2f" % float(r.get("ngain", 0)), 14, UiKit.TEXT))
-		grid.add_child(UiKit.label("%.1f" % float(r.get("sus", 0)), 14, UiKit.TEXT))
-		grid.add_child(UiKit.label(str(r.get("xp", 0)), 14, UiKit.TEXT))
-
-	var btn := UiKit.button("Ekspor CSV", 15)
-	btn.pressed.connect(func():
+	var row := UiKit.hbox(10)
+	v.add_child(row)
+	var open_btn := UiKit.primary_button("Buka asesmen (post-test & SUS)", UiKit.GOLD, 15)
+	open_btn.pressed.connect(func(): open_asesmen.emit())
+	row.add_child(open_btn)
+	var csv := UiKit.button("Ekspor CSV", 15)
+	csv.pressed.connect(func():
 		var path := "user://terra_rekap.csv"
 		if Game.export_csv(path):
 			_status.add_theme_color_override("font_color", UiKit.ACCENT)
 			_status.text = "CSV tersimpan: " + ProjectSettings.globalize_path(path)
 		else:
+			_status.add_theme_color_override("font_color", UiKit.DANGER)
 			_status.text = "Belum ada data untuk diekspor."
 	)
-	v.add_child(btn)
+	row.add_child(csv)
+	var refresh_btn := UiKit.button("Muat ulang", 15, UiKit.MUTED)
+	refresh_btn.pressed.connect(refresh)
+	row.add_child(refresh_btn)
+
+	_status = UiKit.label("", 14, UiKit.ACCENT, 1120)
+	v.add_child(_status)
+	refresh()
+
+func refresh() -> void:
+	if _grid == null:
+		return
+	var recs := Game.read_records()
+	_info.text = "%d peserta tercatat  ·  berkas: %s  ·  instrumen: post-test %d soal, SUS %d butir, batas tuntas %d" % [
+		recs.size(), Game.record_path.get_file(),
+		Content.TEST_ITEMS.size(), Content.SUS_ITEMS.size(), Content.PASSING_SCORE]
+	for c in _grid.get_children():
+		c.queue_free()
+	if recs.is_empty():
+		_grid.add_child(UiKit.label("Belum ada peserta.", 14, UiKit.MUTED))
+		return
+	for r in recs:
+		var per := r.get("materi", {}) as Dictionary
+		var cells := [
+			str(r.get("kode", "-")),
+			str(r.get("tanggal", "-")).replace("T", " "),
+			"%.1f" % float(r.get("durasi_menit", 0.0)),
+			str(int(r.get("post", 0))),
+			str(int(per.get("Basis Data", 0))),
+			str(int(per.get("Sistem Operasi", 0))),
+			str(int(per.get("Kriptografi", 0))),
+			str(int(per.get("Internet of Things", 0))),
+			"ya" if bool(r.get("tuntas", false)) else "tidak",
+			("—" if float(r.get("sus", -1.0)) < 0.0 else "%.1f" % float(r.get("sus", 0.0))),
+		]
+		for i in range(cells.size()):
+			var col := UiKit.TEXT
+			if i == 3:
+				col = UiKit.ACCENT if bool(r.get("tuntas", false)) else UiKit.DANGER
+			var cl := UiKit.label(str(cells[i]), 14, col)
+			cl.custom_minimum_size.x = COL_W[i]
+			_grid.add_child(cl)

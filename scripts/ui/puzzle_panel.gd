@@ -147,7 +147,10 @@ func open(challenge: Dictionary, index: int, total: int) -> void:
 		_boss_hp.text = "HP %d / %d" % [int(_c["boss_hp"]), int(_c.get("boss_max", 3))]
 	else:
 		_boss_row.visible = false
-	_progress.text = "TANTANGAN %d DARI %d" % [index + 1, total]
+	if bool(_c.get("final", false)):
+		_progress.text = "TANTANGAN AKHIR · %d/%d" % [index + 1, total]
+	else:
+		_progress.text = "TANTANGAN %d DARI %d" % [index + 1, total]
 	var mn := str(Content.map_by_id(Game.current_map).get("name", "")).to_upper()
 	if mn != "" and _map_chip.get_child_count() > 0:
 		(_map_chip.get_child(0) as Label).text = mn
@@ -545,6 +548,10 @@ func _on_cipher_check() -> void:
 
 # ------------------------------------------------------------------ hasil
 func _show_feedback(text: String, color: Color) -> void:
+	if color == UiKit.DANGER:
+		Game.sfx("sfx_err")
+	elif color == UiKit.GOLD:
+		Game.sfx("sfx_click", -11.0)
 	_feedback.text = "   " + text
 	_feedback.add_theme_color_override("font_color", color)
 	_feedback.visible = true
@@ -553,6 +560,7 @@ func _win() -> void:
 	if _done:
 		return
 	_done = true
+	Game.sfx("sfx_ok")
 	_show_feedback("Benar. " + str(_c.get("explain", "")), UiKit.ACCENT)
 	for c in _action_row.get_children():
 		c.queue_free()

@@ -1,5 +1,5 @@
 extends Control
-## Panel toko pedagang di Kota Unggul. Menjual barang dengan Keping Data.
+## Panel toko pedagang di Kota Unggul. Menjual barang dengan uang (Bab II 2.5).
 
 signal closed
 
@@ -47,12 +47,18 @@ func _ready() -> void:
 	close_btn.pressed.connect(_on_close)
 	head.add_child(close_btn)
 
-	_coins = UiKit.label("Keping Data: 0", 14, UiKit.GOLD)
+	_coins = UiKit.label("Uang: 0", 14, UiKit.GOLD)
 	root.add_child(_coins)
 
 	root.add_child(UiKit.spacer(2))
-	_list = UiKit.vbox(10)
-	root.add_child(_list)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 492)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+	_list = UiKit.vbox(6)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_list)
 
 	_note = UiKit.label("", 13, UiKit.MUTED, WIDTH - 70)
 	root.add_child(_note)
@@ -62,48 +68,74 @@ func _ready() -> void:
 
 func open() -> void:
 	visible = true
-	_note.text = ""
+	_note.text = "Uang diperoleh dari setiap puzzle di Hutan, Pabrik, Candi, dan Danau — 10 uang per puzzle, sekali saja."
+	_note.add_theme_color_override("font_color", UiKit.MUTED)
 	refresh()
 
 func refresh() -> void:
 	if _list == null:
 		return
-	_coins.text = "Keping Data: %d" % Game.coins
+	_coins.text = "Uang: %d" % Game.coins
 	for c in _list.get_children():
 		c.queue_free()
+	_list.add_child(UiKit.label("KOMPONEN PERANGKAT PEMANTAU AIR — WAJIB UNTUK MAP 5", 11, UiKit.MUTED, WIDTH - 70))
+	for id in Game.COMPONENT_IDS:
+		_list.add_child(_row(str(id), Game.SHOP[id]))
+	_list.add_child(UiKit.label("ITEM BANTU", 11, UiKit.MUTED, WIDTH - 70))
 	for id in Game.SHOP.keys():
+		if Game.is_component_item(str(id)):
+			continue
 		_list.add_child(_row(str(id), Game.SHOP[id]))
 
 func _row(item_id: String, it: Dictionary) -> Control:
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", UiKit.panel_style(UiKit.PANEL_2, UiKit.BORDER, 10, 2))
-	var h := UiKit.hbox(14)
+	var sb := UiKit.panel_style(UiKit.PANEL_2, UiKit.BORDER, 10, 2, false)
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	box.add_theme_stylebox_override("panel", sb)
+	var h := UiKit.hbox(12)
 	box.add_child(h)
 
-	var info := UiKit.vbox(4)
+	var komponen := Game.is_component_item(item_id)
+	var dimiliki := komponen and Game.has_component(item_id)
+
+	var info := UiKit.vbox(0)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(info)
-	info.add_child(UiKit.label(str(it["name"]), 16, UiKit.TEXT))
-	info.add_child(UiKit.label(str(it["desc"]), 12, UiKit.MUTED, 330))
-	info.add_child(UiKit.label("Dimiliki: %d" % Game.item_count(item_id), 12, UiKit.BLUE))
+	info.add_child(UiKit.label(str(it["name"]) + ("  (dimiliki)" if dimiliki else ""),
+		14, UiKit.ACCENT if dimiliki else UiKit.TEXT))
+	var ket := str(it["desc"])
+	if not komponen:
+		ket += " · dimiliki: %d" % Game.item_count(item_id)
+	info.add_child(UiKit.label(ket, 11, UiKit.MUTED, 340))
 
-	var right := UiKit.vbox(6)
+	var right := UiKit.vbox(4)
 	right.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_child(right)
-	right.add_child(UiKit.label("%d keping" % int(it["price"]), 14, UiKit.GOLD))
+	right.add_child(UiKit.label("%d uang" % int(it["price"]), 14, UiKit.GOLD))
 
-	var btn := UiKit.button("Beli", 14)
-	btn.disabled = not Game.can_afford(item_id)
+	var btn := UiKit.button("Dimiliki" if dimiliki else "Beli", 14)
+	btn.disabled = dimiliki or not Game.can_afford(item_id)
 	btn.pressed.connect(func(): _buy(item_id))
 	right.add_child(btn)
 	return box
 
 func _buy(item_id: String) -> void:
+	var it: Dictionary = Game.SHOP[item_id]
 	if Game.buy_item(item_id):
-		_note.text = "Kau membeli %s. Buka tantangan lalu tekan tombol Pakai Lensa." % str(Game.SHOP[item_id]["name"])
+		Game.sfx("sfx_coin")
+		if Game.is_component_item(item_id):
+			_note.text = "%s dibeli. Komponen perangkat: %d/%d." % [
+				str(it["name"]), Game.component_count(), Game.COMPONENT_TOTAL]
+		else:
+			_note.text = "Kau membeli %s. Buka tantangan lalu tekan tombol Pakai Lensa." % str(it["name"])
 		_note.add_theme_color_override("font_color", UiKit.ACCENT)
 	else:
-		_note.text = "Keping data belum cukup. Selesaikan tantangan untuk mendapat 10 keping setiap kali."
+		Game.sfx("sfx_err")
+		if Game.coins < int(it["price"]):
+			_note.text = "Uang belum cukup. Setiap puzzle di Hutan, Pabrik, Candi, dan Danau memberi 10 uang."
+		else:
+			_note.text = "Uangmu disisakan untuk komponen perangkat. Beli komponen yang belum dimiliki lebih dahulu."
 		_note.add_theme_color_override("font_color", UiKit.DANGER)
 	refresh()
 

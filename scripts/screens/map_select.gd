@@ -48,7 +48,7 @@ func _ready() -> void:
 	v.add_child(_grid)
 
 func refresh() -> void:
-	_info.text = "Lv %d  ·  %d/%d tantangan  ·  %d badge" % [Game.level(), Game.total_done(), Content.total_challenges(), Game.badges.size()]
+	_info.text = "%d/%d tantangan  ·  %d/%d badge" % [Game.total_done(), Content.total_challenges(), Game.badges.size(), Content.badge_total()]
 	for c in _grid.get_children():
 		c.queue_free()
 	for i in range(Content.MAPS.size()):

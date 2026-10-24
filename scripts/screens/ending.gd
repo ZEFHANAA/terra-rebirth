@@ -51,7 +51,7 @@ func _ready() -> void:
 	var row := UiKit.hbox(10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_v.add_child(row)
-	var b1 := UiKit.button("Isi Post-Test & SUS", 15, UiKit.GOLD)
+	var b1 := UiKit.button("Data Peserta", 15, UiKit.GOLD)
 	b1.pressed.connect(func(): open_research.emit())
 	row.add_child(b1)
 	var b2 := UiKit.button("Peta Wilayah", 15)
@@ -80,11 +80,18 @@ func refresh() -> void:
 		_sub.text = "Data tersusun, mesin berjalan, sandi terbaca, dan danau kembali terpantau."
 	for c in _stats.get_children():
 		c.queue_free()
+	var res := Game.posttest_result()
+	var nilai := "—"
+	if not res.is_empty():
+		nilai = str(int(res.get("nilai", 0)))
+	var sus := "—"
+	if Game.sus_done:
+		sus = "%.0f" % Game.sus_value()
 	var pairs := [
 		["TANTANGAN", "%d/%d" % [Game.total_done(), Content.total_challenges()]],
-		["TOTAL XP", str(Game.xp)],
-		["LEVEL", str(Game.level())],
-		["BADGE", "%d/5" % Game.badges.size()],
+		["BADGE", "%d/%d" % [Game.badges.size(), Content.badge_total()]],
+		["NILAI POST-TEST", nilai],
+		["SKOR SUS", sus],
 	]
 	for pair in pairs:
 		var col := UiKit.vbox(4)

@@ -3,16 +3,10 @@ extends Node2D
 
 signal talk_to_npc(npc_id: String)
 signal enter_portal
+signal objective_changed(info: Dictionary)
 signal inspect_object(obj_id: String)
 
-const SPAWNS := {
-	"kota": Vector2(33, 10),
-	"hutan": Vector2(18, 18),
-	"pabrik": Vector2(19, 18),
-	"candi": Vector2(19, 19),
-	"danau": Vector2(27, 12),
-	"source": Vector2(12, 17),
-}
+const SPAWNS := Content.SPAWNS
 
 var map_id := "kota"
 var meta: Dictionary = {}
@@ -94,6 +88,7 @@ func _build_props() -> void:
 		spr.centered = true
 		spr.offset = Vector2(0, -tex.get_height() * 0.5)
 		spr.scale = Vector2(sc, sc)
+		spr.flip_h = bool(it.get("f", false))
 		spr.position = Vector2(float(it.get("x", 0.0)), float(it.get("y", 0.0)))
 		actors.add_child(spr)
 		_add_prop_body(str(it.get("n", "tree_big")), spr.position)
@@ -221,8 +216,14 @@ func _build_npcs() -> void:
 	var meta_npc: Dictionary = meta.get("npc", {})
 	for n in list:
 		var spr := AnimatedSprite2D.new()
-		spr.sprite_frames = _npc_frames("res://assets/sprites/npc_%s.png" % str(n.get("sprite", "kepala")))
+		var tex: Texture2D = load("res://assets/sprites/npc_%s.png" % str(n.get("sprite", "kepala")))
+		spr.sprite_frames = _npc_frames(tex)
 		spr.play("idle_down")
+		# Sheet NPC lama berukuran 96x144 per frame, sheet baru 24x32. Sprite
+		# baru diperbesar supaya tinggi tubuhnya sama dengan NPC lain.
+		var sk := 144.0 / _npc_frame_size(tex).y
+		spr.scale = Vector2(sk, sk)
+		spr.offset = Vector2(0, -56.0 / sk)
 		if OS.get_environment("TERRA_NPCDBG") != "":
 			print("NPC ", n.get("name"), " frames=", spr.sprite_frames.get_frame_count("idle_down"),
 				" speed=", spr.sprite_frames.get_animation_speed("idle_down"),
@@ -272,16 +273,24 @@ func _build_npcs() -> void:
 		if str(n.get("action", "quest")) == "quest" and npc_node == null:
 			npc_node = spr
 
-func _npc_frames(path: String) -> SpriteFrames:
+## Ukuran satu frame pada sheet NPC.
+## Sheet lama: 384x576 -> 4 kolom x 4 baris, frame 96x144.
+## Sheet baru: 72x128  -> 3 kolom x 4 baris, frame 24x32.
+func _npc_frame_size(tex: Texture2D) -> Vector2:
+	if tex.get_width() >= 384:
+		return Vector2(96, 144)
+	return Vector2(float(tex.get_width()) / 3.0, float(tex.get_height()) / 4.0)
+
+func _npc_frames(tex: Texture2D) -> SpriteFrames:
 	var sf := SpriteFrames.new()
 	sf.remove_animation("default")
-	var tex: Texture2D = load(path)
 	sf.add_animation("idle_down")
+	var fr := _npc_frame_size(tex)
 	# dua frame (kolom 0 dan 2) supaya NPC ikut "bernapas", tidak seperti gambar mati
 	for col in [0, 2]:
 		var at := AtlasTexture.new()
 		at.atlas = tex
-		at.region = Rect2(col * 96, 0, 96, 144)
+		at.region = Rect2(col * fr.x, 0, fr.x, fr.y)
 		sf.add_frame("idle_down", at)
 	sf.set_animation_speed("idle_down", 1.6)
 	sf.set_animation_loop("idle_down", true)
@@ -351,7 +360,7 @@ func _build_player() -> void:
 func _build_camera() -> void:
 	var cam := Camera2D.new()
 	cam.name = "Cam"
-	cam.zoom = Vector2(1.5, 1.5)
+	cam.zoom = Vector2(1.0, 1.0)
 	cam.position = Vector2(_map_w() * 0.5, _map_h() * 0.5)
 	cam.limit_left = -100000
 	cam.limit_top = -100000
@@ -386,11 +395,16 @@ func _process(delta: float) -> void:
 	_update_camera()
 	_fade_canopy(delta)
 	_animate_marks()
+	objective_changed.emit(next_objective())
 	var target := ""
 	var best := 88.0
 	for n in npcs:
 		var node: Node2D = n["node"]
 		var d := player.position.distance_to(node.position + Vector2(0, 46))
+		# NPC menoleh ke sisi tempat pemain berdiri supaya terasa hidup.
+		var face_left: bool = player.position.x < node.position.x - 4.0
+		if node is AnimatedSprite2D and node.flip_h != face_left:
+			node.flip_h = face_left
 		if d < best:
 			best = d
 			target = "npc:" + str(n["id"])
@@ -402,8 +416,11 @@ func _process(delta: float) -> void:
 		if od < best:
 			best = od
 			target = "obj:" + str(o["id"])
-	if portal_node and player.position.distance_to(portal_node.position) < best:
-		target = "portal"
+	if portal_node:
+		var pd: float = player.position.distance_to(portal_node.position)
+		portal_node.near = pd < 150.0
+		if pd < best:
+			target = "portal"
 	if target != _prompt_target:
 		_prompt_target = target
 		_emit_prompt(target)
@@ -435,12 +452,36 @@ func _object_entry(obj_id: String) -> Dictionary:
 			return o
 	return {}
 
-## Objek disembunyikan bila tantangannya sudah selesai atau komponennya sudah diambil.
+## Objek disembunyikan bila tantangannya sudah selesai.
+## Objek/NPC terdekat yang belum selesai — dipakai HUD untuk panah tujuan.
+func next_objective() -> Dictionary:
+	var best := {}
+	var best_d := 1e9
+	for o in objects:
+		if not _object_active(o):
+			continue
+		var node := o["node"] as Node2D
+		if node == null:
+			continue
+		var d: float = node.position.distance_to(player.position)
+		if d < best_d:
+			best_d = d
+			best = {"pos": node.position, "name": str(o["label"])}
+	for n in npcs:
+		if str(n.get("action", "quest")) != "quest":
+			continue
+		var node2 := n["node"] as Node2D
+		if node2 == null:
+			continue
+		var d2: float = node2.position.distance_to(player.position)
+		if d2 < best_d:
+			best_d = d2
+			best = {"pos": node2.position, "name": str(n.get("name", "NPC"))}
+	return best
+
 func _object_active(o: Dictionary) -> bool:
 	var data: Dictionary = o["data"]
 	if data.has("challenge") and Game.done.has(str(data["challenge"])):
-		return false
-	if data.has("gives") and Game.has_component(str(data["gives"])):
 		return false
 	return true
 
