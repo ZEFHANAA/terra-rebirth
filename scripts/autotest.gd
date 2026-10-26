@@ -110,7 +110,7 @@ func run() -> void:
 	# --- objek pencarian di Hutan membuka tantangan
 	main._load_map("hutan")
 	await wait(0.3)
-	check(main._world.objects.size() == 5, "Hutan punya 5 objek pencarian (5 quest)")
+	check(main._world.objects.size() == 3, "Hutan punya 3 objek pencarian (3 quest)")
 	main._on_inspect_object("hutan-cari-1")
 	await wait(0.25)
 	check(main.dialog.visible, "objek menampilkan temuan")
@@ -167,6 +167,9 @@ func run() -> void:
 			if not main.puzzle.visible:
 				check(false, "puzzle terbuka untuk %s" % ch["id"])
 				continue
+			if not main.puzzle._lesson_done:
+				main.puzzle._on_lesson_answer(int(ch["lesson"]["answer"]), Button.new())
+				await wait(0.1)
 			_solve(ch)
 			await wait(0.15)
 			if main.puzzle._action_row.get_child_count() > 0:
@@ -186,10 +189,8 @@ func run() -> void:
 
 	Game.complete_challenge("hutan-1", "hutan")
 	Game.complete_challenge("hutan-2", "hutan")
-	Game.complete_challenge("hutan-3", "hutan")
-	Game.complete_challenge("hutan-4", "hutan")
 	check(Game.badges.is_empty(), "badge hutan belum diberikan sebelum tantangan akhir")
-	Game.complete_challenge("hutan-5", "hutan")
+	Game.complete_challenge("hutan-3", "hutan")
 	check(Game.badges.has("nature"), "badge Map 2 diberikan setelah seluruh quest selesai")
 	check(Game.map_unlocked("pabrik"), "pabrik terbuka setelah badge Map 2")
 	check(Game.badges.size() == 1, "hanya satu badge untuk satu map")

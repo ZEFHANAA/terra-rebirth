@@ -35,6 +35,7 @@ var _cipher_shift := 0
 var _cipher_label: Label
 var _pool_box: VBoxContainer
 var _answer_box: VBoxContainer
+var _lesson_done := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -133,6 +134,7 @@ func open(challenge: Dictionary, index: int, total: int) -> void:
 	_order_answer.clear()
 	_order_pool.clear()
 	_cipher_shift = 0
+	_lesson_done = not _c.has("lesson")
 	_feedback.visible = false
 	_feedback.text = ""
 	for ch in _action_row.get_children():
@@ -157,6 +159,13 @@ func open(challenge: Dictionary, index: int, total: int) -> void:
 	_title.text = str(_c.get("title", "Tantangan")).to_upper()
 	_prompt.text = str(_c.get("prompt", ""))
 
+	if _lesson_done:
+		_build_active_challenge()
+	else:
+		_build_lesson()
+	visible = true
+
+func _build_active_challenge() -> void:
 	if _c.has("table"):
 		_body.add_child(_make_table(_c["table"]))
 
@@ -171,7 +180,41 @@ func open(challenge: Dictionary, index: int, total: int) -> void:
 			_build_craft()
 		"cipher":
 			_build_cipher()
-	visible = true
+
+func _build_lesson() -> void:
+	var lesson: Dictionary = _c.get("lesson", {})
+	var head := UiKit.kicker("SIMULASI BELAJAR", UiKit.ACCENT, 11)
+	_body.add_child(head)
+	_body.add_child(UiKit.body(str(lesson.get("text", "Coba konsep ini sebelum mengerjakan misi.")), 16, UiKit.TEXT, WIDTH - 70))
+	var question := UiKit.label(str(lesson.get("prompt", "Apa langkah yang tepat?")), 16, UiKit.GOLD, WIDTH - 70)
+	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_body.add_child(question)
+	var options: Array = lesson.get("options", [])
+	for i in range(options.size()):
+		var btn := UiKit.button("%s.  %s" % [char(65 + i), str(options[i])], 15)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(WIDTH - 96, 46)
+		btn.pressed.connect(_on_lesson_answer.bind(i, btn))
+		_body.add_child(btn)
+
+func _on_lesson_answer(index: int, btn: Button) -> void:
+	if _lesson_done:
+		return
+	var lesson: Dictionary = _c.get("lesson", {})
+	if index != int(lesson.get("answer", -1)):
+		btn.disabled = true
+		_attempts += 1
+		_show_feedback(str(lesson.get("wrong", "Belum tepat. Coba pahami kembali simulasi.")), UiKit.DANGER)
+		return
+	_lesson_done = true
+	_show_feedback(str(lesson.get("success", "Konsep dipahami. Tantangan utama terbuka.")), UiKit.ACCENT)
+	for c in _body.get_children():
+		c.queue_free()
+	for c in _action_row.get_children():
+		c.queue_free()
+	await get_tree().process_frame
+	_build_active_challenge()
 
 
 # ------------------------------------------------------------------ rakit perangkat
