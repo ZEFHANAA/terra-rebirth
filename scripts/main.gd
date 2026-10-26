@@ -10,6 +10,7 @@ const MAP_SCRIPT := preload("res://scripts/screens/map_select.gd")
 const RESEARCH_SCRIPT := preload("res://scripts/screens/research.gd")
 const ENDING_SCRIPT := preload("res://scripts/screens/ending.gd")
 const BADGE_SCRIPT := preload("res://scripts/ui/badge_popup.gd")
+const REWARD_SCRIPT := preload("res://scripts/ui/reward_popup.gd")
 const SHOP_SCRIPT := preload("res://scripts/ui/shop_panel.gd")
 const ASESMEN_SCRIPT := preload("res://scripts/ui/asesmen.gd")
 
@@ -29,6 +30,7 @@ var hud: Control
 var dialog: Control
 var puzzle: Control
 var badge_popup: Control
+var reward_popup: Control
 var shop: Control
 var asesmen: Control
 var title_screen: Control
@@ -108,6 +110,9 @@ func _ready() -> void:
 	badge_popup = BADGE_SCRIPT.new()
 	_modal_layer.add_child(badge_popup)
 	badge_popup.closed.connect(_on_badge_closed)
+
+	reward_popup = REWARD_SCRIPT.new()
+	_modal_layer.add_child(reward_popup)
 
 	asesmen = ASESMEN_SCRIPT.new()
 	_modal_layer.add_child(asesmen)
@@ -1379,7 +1384,10 @@ func _open_next_challenge() -> void:
 
 func _on_puzzle_solved(challenge_id: String) -> void:
 	var was_cleared := Game.is_map_cleared(current_map)
+	var coins_before := Game.coins
 	Game.complete_challenge(challenge_id, current_map)
+	if reward_popup != null and Game.coins > coins_before:
+		reward_popup.show_reward(Game.coins - coins_before)
 	_toast.text = "Quest selesai — %d/%d tantangan" % [Game.map_done(current_map), Game.map_total(current_map)]
 	_toast.modulate.a = 1.0
 	var tw := create_tween()

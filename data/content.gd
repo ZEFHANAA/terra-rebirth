@@ -153,21 +153,12 @@ const MAPS := [
 					"Catatan ini menyebut dua tabel yang terpisah: sumber air dan lokasi. Tidak ada query yang bisa menggabungkannya.",
 					"Kalau kau bisa menulis query yang menghubungkan keduanya, daftar titik tercemar bisa disusun ulang."
 				]},
-			{"id": "hutan-cari-4", "label": "Papan Daftar Lokasi", "x": 36, "y": 8, "challenge": "hutan-4",
-				"text": [
-					"Papan ini berisi seluruh lokasi yang pernah dicatat, termasuk tiga lokasi yang belum memiliki data sumber air sama sekali.",
-					"Kalau kau memakai penggabungan biasa, ketiga lokasi itu akan hilang dari laporan. Pilih jenis penggabungan yang tepat."
-				]},
-			{"id": "hutan-cari-5", "label": "Sampel Air", "x": 33, "y": 20, "challenge": "hutan-5",
-				"text": [
-					"Sampel terakhir. Angkanya sudah terkumpul, tetapi belum diurutkan, jadi tidak ada yang tahu titik mana yang paling mendesak.",
-					"Urutkan hasilnya, lalu tentukan titik pertama yang harus ditangani."
-				]}
 		],
 		"challenges": [
 			{
-				"id": "hutan-1", "title": "Kunci Tabel", "type": "mcq",
+				"id": "hutan-1", "title": "Kunci Tabel", "type": "build",
 				"prompt": "Perhatikan tabel sumber air berikut. Kolom mana yang berperan sebagai primary key?",
+				"lesson": {"text": "Primary key mengenali satu baris secara unik. Foreign key menghubungkan baris itu ke tabel lain.", "prompt": "Simulasi: pilih kolom yang paling tepat dijadikan primary key.", "options": ["id_sumber", "nama", "ph"], "answer": 0, "success": "Kunci unik ditemukan. Sekarang susun peran kolom tabel.", "wrong": "Nama dan pH dapat berulang. Cari kolom identitas yang unik."},
 				"table": {
 					"head": ["id_sumber", "nama", "ph", "id_lokasi"],
 					"rows": [
@@ -176,25 +167,29 @@ const MAPS := [
 						["SA-03", "Sumur Tua", "6.3", "L-02"]
 					]
 				},
-				"options": ["id_sumber", "nama", "ph", "id_lokasi"],
-				"answer": 0,
+				"tables": "Pilih peran kolom pada tabel sumber_air.",
+				"parts": [
+					{"pre": "PRIMARY KEY", "answer": "id_sumber", "options": ["id_sumber", "nama", "ph"]},
+					{"pre": "FOREIGN KEY", "answer": "id_lokasi", "options": ["id_lokasi", "nama", "ph"]}
+				],
 				"explain": "id_sumber bersifat unik dan tidak boleh kosong, sehingga dapat menjadi primary key. Kolom id_lokasi adalah foreign key yang merujuk ke tabel lokasi, sedangkan nama dan pH bisa berubah atau berulang."
 			},
 			{
-				"id": "hutan-2", "title": "Relasi Satu ke Banyak", "type": "mcq",
+				"id": "hutan-2", "title": "Relasi Satu ke Banyak", "type": "order",
 				"prompt": "Satu lokasi dapat memiliki banyak sumber air, tetapi satu sumber air hanya berada pada satu lokasi. Di tabel mana foreign key harus diletakkan?",
-				"options": [
-					"Di tabel sumber_air, sebagai kolom id_lokasi yang merujuk ke tabel lokasi",
-					"Di tabel lokasi, sebagai kolom id_sumber yang merujuk ke tabel sumber_air",
-					"Di kedua tabel, agar datanya saling mencerminkan",
-					"Tidak perlu foreign key, cukup nama lokasi ditulis ulang di setiap baris"
+				"lesson": {"text": "Pada relasi satu ke banyak, tabel di sisi banyak menyimpan foreign key.", "prompt": "Simulasi: ikuti alur pemulihan relasi.", "options": ["Lokasi -> sumber_air -> id_lokasi", "Sumber_air -> lokasi -> id_sumber", "Nama lokasi ditulis ulang tanpa kunci"], "answer": 0, "success": "Relasi berhasil dipulihkan. Susun langkahnya dalam misi.", "wrong": "Satu lokasi dapat dirujuk banyak sumber air, jadi kunci berada di sisi sumber_air."},
+				"items": [
+					"Identifikasi tabel di sisi satu: lokasi",
+					"Identifikasi tabel di sisi banyak: sumber_air",
+					"Tambahkan id_lokasi pada tabel sumber_air",
+					"Hubungkan id_lokasi ke primary key tabel lokasi"
 				],
-				"answer": 0,
 				"explain": "Pada relasi satu ke banyak, foreign key diletakkan di sisi 'banyak', yaitu tabel sumber_air. Dengan begitu satu baris lokasi dapat dirujuk oleh banyak baris sumber air tanpa mengulang data lokasi."
 			},
 			{
-				"id": "hutan-3", "title": "Menyusun Query", "type": "build",
+				"id": "hutan-3", "title": "Menyusun Query", "type": "build", "final": true,
 				"prompt": "Susun query untuk menampilkan nama sumber air beserta nama lokasinya, hanya untuk sumber air dengan pH di bawah 6,5, diurutkan dari pH terendah.",
+				"lesson": {"text": "Query analitis biasanya menggabungkan tabel, menyaring baris, lalu mengurutkan hasil.", "prompt": "Simulasi: pilih urutan kerja query.", "options": ["JOIN -> WHERE -> ORDER BY", "ORDER BY -> JOIN -> WHERE", "WHERE -> ORDER BY -> JOIN"], "answer": 0, "success": "Alur query benar. Sekarang tulis query lengkap.", "wrong": "Gabungkan data dahulu, saring hasilnya, lalu urutkan."},
 				"tables": "sumber_air (id_sumber, nama, ph, id_lokasi)  ·  lokasi (id_lokasi, nama_lokasi)",
 				"parts": [
 					{"pre": "SELECT", "answer": "s.nama, l.nama_lokasi", "options": ["s.nama, l.nama_lokasi", "s.nama, s.ph", "l.nama_lokasi, l.id_lokasi"]},
@@ -205,38 +200,6 @@ const MAPS := [
 				],
 				"explain": "Query lengkap: SELECT s.nama, l.nama_lokasi FROM sumber_air s JOIN lokasi l ON s.id_lokasi = l.id_lokasi WHERE s.ph < 6.5 ORDER BY s.ph ASC;  — JOIN menghubungkan kedua tabel melalui kolom relasi, WHERE menyaring baris, dan ORDER BY mengurutkan hasil."
 			},
-			{
-				"id": "hutan-4", "title": "Memilih Jenis JOIN", "type": "mcq",
-				"prompt": "Laporan harus tetap menampilkan seluruh lokasi, termasuk lokasi yang belum memiliki data sumber air. Jenis JOIN mana yang tepat?",
-				"options": [
-					"LEFT JOIN, dengan tabel lokasi sebagai tabel kiri",
-					"INNER JOIN, karena hanya baris yang cocok yang dibutuhkan",
-					"CROSS JOIN, agar semua kombinasi baris muncul",
-					"Tidak perlu JOIN, cukup dua query terpisah"
-				],
-				"answer": 0,
-				"explain": "INNER JOIN hanya mengembalikan baris yang memiliki pasangan di kedua tabel, sehingga lokasi tanpa data sumber air akan hilang. LEFT JOIN mempertahankan seluruh baris tabel kiri dan mengisi nilai kosong pada kolom tabel kanan bila tidak ada pasangan."
-			},
-			{
-				"id": "hutan-5", "title": "Tantangan Akhir: Membaca Hasil", "type": "mcq", "final": true,
-				"prompt": "Query dijalankan dan menghasilkan tabel berikut. Titik mana yang harus ditangani lebih dahulu?",
-				"table": {
-					"head": ["nama", "nama_lokasi", "ph"],
-					"rows": [
-						["Mata Air Tujuh", "Hulu Danau", "4.8"],
-						["Sungai Biru", "Hilir Pabrik", "5.9"],
-						["Sumur Tua", "Kota Unggul", "6.3"]
-					]
-				},
-				"options": [
-					"Mata Air Tujuh, karena pH-nya paling rendah (paling asam)",
-					"Sumur Tua, karena pH-nya paling mendekati normal",
-					"Sungai Biru, karena lokasinya di hilir pabrik",
-					"Semua sama saja, urutannya tidak berpengaruh"
-				],
-				"answer": 0,
-				"explain": "Hasil query sudah diurutkan menaik (ASC), sehingga baris pertama adalah pH terendah. pH 4,8 berada paling jauh di bawah ambang normal, jadi titik itu paling mendesak ditangani."
-			}
 		]
 	},
 	{
@@ -251,15 +214,16 @@ const MAPS := [
 		],
 		"challenges": [
 			{
-				"id": "pabrik-1", "title": "Keadaan Proses", "type": "mcq",
+				"id": "pabrik-1", "title": "Keadaan Proses", "type": "order",
 				"prompt": "Sebuah proses baru saja menyelesaikan operasi I/O. Keadaan proses tersebut berubah menjadi apa?",
-				"options": ["Running", "Ready", "Waiting", "Terminated"],
-				"answer": 1,
+				"lesson": {"text": "Proses yang selesai I/O kembali menunggu giliran CPU, bukan langsung berjalan.", "prompt": "Simulasi: pilih lintasan proses yang benar.", "options": ["Waiting -> Ready -> Running", "Waiting -> Terminated", "Running -> Waiting -> New"], "answer": 0, "success": "Lintasan proses benar. Susun simulasi keadaan proses.", "wrong": "Setelah I/O selesai, proses masuk Ready dan menunggu dispatcher."},
+				"items": ["Proses selesai operasi I/O", "Proses kembali ke antrean ready", "Dispatcher memilih proses", "Proses masuk ke keadaan running"],
 				"explain": "Setelah I/O selesai, proses tidak langsung berjalan. Proses kembali ke antrean Ready dan menunggu dipilih kembali oleh penjadwal (dispatcher) untuk masuk ke keadaan Running."
 			},
 			{
 				"id": "pabrik-2", "title": "Urutan Penjadwalan", "type": "order",
 				"prompt": "Urutkan langkah berikut sehingga sebuah proses dapat berjalan pertama kali di CPU.",
+				"lesson": {"text": "Dispatcher hanya dapat memilih proses yang berada di antrean ready.", "prompt": "Simulasi: apa yang harus terjadi sebelum CPU menjalankan proses?", "options": ["New -> Ready -> Dispatcher -> Running", "New -> Running -> Ready", "Waiting -> New -> Running"], "answer": 0, "success": "Jalur menuju CPU dipahami. Sekarang susun urutan lengkapnya.", "wrong": "Proses harus berada di ready sebelum dispatcher memilihnya."},
 				"items": [
 					"Proses baru dibuat dan masuk ke antrean ready",
 					"Dispatcher memilih proses dari antrean ready",
@@ -270,45 +234,23 @@ const MAPS := [
 				"explain": "Alur keadaan proses: New → Ready → Running → Waiting → Ready. Dispatcher hanya memilih proses yang berada di antrean ready, dan proses yang menunggu I/O tidak dapat dijalankan sampai I/O-nya selesai."
 			},
 			{
-				"id": "pabrik-3", "title": "Memilih Penjadwalan", "type": "mcq",
+				"id": "pabrik-3", "title": "Memilih Penjadwalan", "type": "order",
 				"prompt": "Empat proses tiba bersamaan dengan burst time berikut. Manakah pernyataan yang benar?",
 				"table": {
 					"head": ["Proses", "Burst time"],
 					"rows": [["P1", "8"], ["P2", "4"], ["P3", "2"], ["P4", "6"]]
 				},
-				"options": [
-					"FCFS memberi rata-rata waktu tunggu 8,5 dan lebih baik daripada SJF",
-					"SJF memberi rata-rata waktu tunggu 5,0 dan lebih baik daripada FCFS",
-					"FCFS memberi rata-rata waktu tunggu 5,0 dan lebih baik daripada SJF",
-					"Keduanya memberi rata-rata waktu tunggu yang sama, yaitu 6,0"
-				],
-				"answer": 1,
+				"lesson": {"text": "SJF memilih burst time paling pendek. Ini sering menurunkan rata-rata waktu tunggu, tetapi proses panjang bisa menunggu lebih lama.", "prompt": "Simulasi: susun proses dengan strategi SJF.", "options": ["P3 -> P2 -> P4 -> P1", "P1 -> P2 -> P3 -> P4", "P4 -> P3 -> P2 -> P1"], "answer": 0, "success": "Strategi SJF dipahami. Hitung dan susun jadwal proses.", "wrong": "SJF berarti shortest job first, mulai dari burst time terkecil."},
+				"items": ["P3 (burst 2)", "P2 (burst 4)", "P4 (burst 6)", "P1 (burst 8)"],
 				"explain": "FCFS (P1,P2,P3,P4): tunggu = 0+8+12+14 = 34, rata-rata 8,5. SJF (P3,P2,P4,P1): tunggu = 0+2+6+12 = 20, rata-rata 5,0. SJF memilih burst time terkecil lebih dulu sehingga rata-rata waktu tunggu lebih kecil."
 			},
 			{
-				"id": "pabrik-4", "title": "Sumber Daya Bersama", "type": "mcq",
+				"id": "pabrik-4", "title": "Sumber Daya Bersama", "type": "order", "final": true,
 				"prompt": "Dua proses memakai printer yang sama. Apa tujuan penerapan mutual exclusion pada sumber daya tersebut?",
-				"options": [
-					"Memastikan hanya satu proses yang memakai sumber daya pada satu waktu, sehingga data tidak tercampur",
-					"Memastikan kedua proses dapat memakai sumber daya secara bersamaan agar lebih cepat",
-					"Menghapus sumber daya dari sistem agar tidak diperebutkan",
-					"Memberi prioritas permanen kepada proses yang pertama kali datang"
-				],
-				"answer": 0,
+				"lesson": {"text": "Critical section harus dilindungi agar dua proses tidak menulis ke printer pada waktu yang sama.", "prompt": "Simulasi: susun prosedur aman memakai printer.", "options": ["Lock -> satu proses mencetak -> unlock -> proses berikutnya", "Dua proses mencetak bersamaan", "Hapus printer dari sistem"], "answer": 0, "success": "Mutual exclusion aktif. Selesaikan prosedur perlindungan resource.", "wrong": "Resource bersama perlu dikunci, dipakai satu proses, lalu dilepas."},
+				"items": ["Proses meminta lock printer", "Sistem memberi lock kepada satu proses", "Proses mencetak di critical section", "Proses melepas lock printer"],
 				"explain": "Mutual exclusion menjamin bahwa pada satu waktu hanya satu proses berada di critical section yang memakai sumber daya bersama. Tanpa itu, hasil kedua proses dapat bercampur (race condition) dan keluaran menjadi rusak."
 			},
-			{
-				"id": "pabrik-5", "title": "Tantangan Akhir: Dampak Kesalahan", "type": "mcq", "final": true,
-				"prompt": "P1 memegang resource X dan menunggu Y, sementara P2 memegang Y dan menunggu X. Apa dampaknya bagi sistem, dan bagaimana memperbaikinya?",
-				"options": [
-					"Terjadi deadlock; sistem berhenti melayani proses lain, dan dapat diperbaiki dengan membebaskan salah satu resource serta menyeragamkan urutan permintaan resource",
-					"Terjadi starvation; sistem tetap berjalan cepat, dan cukup menambah proses baru",
-					"Terjadi race condition; cukup mengulang kedua proses tanpa mengubah apa pun",
-					"Tidak terjadi masalah; kedua proses akan selesai sendiri karena CPU cepat"
-				],
-				"answer": 0,
-				"explain": "Kondisi tersebut adalah deadlock (saling menunggu) akibat circular wait. Karena kedua proses tidak dapat melanjutkan, seluruh antrean ikut tertahan. Penanganannya antara lain preemption (membebaskan resource satu proses) dan penetapan urutan permintaan resource yang konsisten untuk mencegah siklus terulang."
-			}
 		]
 	},
 	{
@@ -323,38 +265,44 @@ const MAPS := [
 		],
 		"challenges": [
 			{
-				"id": "candi-1", "title": "Mengenali Sandi", "type": "mcq",
+				"id": "candi-1", "title": "Mengenali Sandi", "type": "cipher",
 				"prompt": "Teks UHELUWK tidak terbaca, tetapi setiap huruf tampak bergeser tiga posisi dari huruf aslinya. Metode apakah yang dipakai?",
-				"options": ["Caesar cipher", "SHA-256", "RSA", "MQTT"],
-				"answer": 0,
+				"lesson": {"text": "Sandi Caesar menggeser setiap huruf dengan jumlah langkah yang sama.", "prompt": "Simulasi: atur pergeseran agar A berubah menjadi D.", "options": ["Geser 3 ke depan", "Geser 3 ke belakang", "Gunakan hash"], "answer": 0, "success": "Pola Caesar dikenali. Putar cakram untuk membaca pesan.", "wrong": "Caesar memakai pergeseran tetap pada setiap huruf."},
+				"ciphertext": "UHELUWK", "answer": "REBIRTH", "answer_shift": 3,
 				"explain": "Caesar cipher menggeser setiap huruf dengan jumlah tetap, sehingga polanya masih terlihat. SHA-256 adalah fungsi hash satu arah (tidak dapat dikembalikan), RSA memakai kunci publik-privat, dan MQTT adalah protokol komunikasi IoT, bukan sandi."
 			},
 			{
 				"id": "candi-2", "title": "Memutar Cakram", "type": "cipher",
 				"prompt": "Putar cakram sandi sampai pesan terbaca. Prasasti menampilkan ciphertext berikut.",
+				"lesson": {"text": "Untuk membalik sandi yang digeser ke depan, putar cakram ke arah sebaliknya.", "prompt": "Simulasi: ciphertext U berubah menjadi R dengan cara apa?", "options": ["Geser 3 ke belakang", "Geser 3 ke depan", "Urutkan alfabet acak"], "answer": 0, "success": "Arah pembalikan benar. Pecahkan ciphertext prasasti.", "wrong": "U harus mundur tiga langkah menjadi R."},
 				"ciphertext": "UHELUWK",
 				"answer": "REBIRTH",
 				"answer_shift": 3,
 				"explain": "Dengan pergeseran 3 ke belakang, U→R, H→E, E→B, L→I, U→R, W→T, K→H, sehingga terbaca REBIRTH."
 			},
 			{
-				"id": "candi-3", "title": "Analisis Frekuensi", "type": "mcq",
+				"id": "candi-3", "title": "Analisis Frekuensi", "type": "order",
 				"prompt": "Pada ciphertext yang panjang, huruf yang paling sering muncul adalah H. Dalam bahasa Indonesia huruf yang paling sering muncul adalah E. Berapa pergeseran yang paling mungkin dipakai?",
-				"options": ["2", "3", "5", "7"],
-				"answer": 1,
+				"lesson": {"text": "Frekuensi huruf membantu memperkirakan substitusi pada pesan panjang.", "prompt": "Simulasi: susun langkah analisis frekuensi.", "options": ["Cari huruf paling sering -> bandingkan dengan E -> uji pergeseran", "Dekripsi tanpa mengamati pola", "Hash seluruh pesan"], "answer": 0, "success": "Metode analisis dipahami. Susun proses pemeriksaan ciphertext.", "wrong": "Amati pola kemunculan huruf sebelum mencoba pergeseran."},
+				"items": ["Hitung frekuensi setiap huruf", "Cari huruf ciphertext yang paling sering", "Bandingkan dengan huruf E", "Uji pergeseran pada beberapa kata"],
 				"explain": "Jika H mewakili E, maka setiap huruf telah digeser 3 ke depan (E→F→G→H). Analisis frekuensi memanfaatkan kenyataan bahwa pola kemunculan huruf pada teks asli masih terbawa ke ciphertext."
 			},
 			{
-				"id": "candi-4", "title": "Tantangan Akhir: Memilih Metode", "type": "mcq", "final": true,
+				"id": "candi-4", "title": "Memilih Metode", "type": "build",
 				"prompt": "Arsip candi menyimpan dua kebutuhan berbeda: menyimpan kata sandi penjaga, dan mengirim pesan rahasia kepada sekutu yang memegang kunci publik. Pasangan metode yang tepat adalah?",
-				"options": [
-					"SHA-256 untuk menyimpan kata sandi, RSA untuk mengirim pesan dengan kunci publik",
-					"Caesar cipher untuk menyimpan kata sandi, SHA-256 untuk mengirim pesan",
-					"RSA untuk menyimpan kata sandi, Vigenere untuk mengirim pesan",
-					"Vigenere untuk keduanya, karena paling mudah dihitung manual"
+				"lesson": {"text": "Hash cocok untuk verifikasi kata sandi. Enkripsi kunci publik cocok untuk pesan yang perlu dibuka penerima.", "prompt": "Simulasi: pasangkan kebutuhan dengan metode.", "options": ["Kata sandi -> hash; pesan -> RSA", "Kata sandi -> Caesar; pesan -> hash", "Keduanya -> Caesar"], "answer": 0, "success": "Metode kriptografi dipilih. Bangun rantai keamanan arsip.", "wrong": "Kata sandi tidak perlu dikembalikan, sedangkan pesan rahasia perlu dienkripsi untuk penerima."},
+				"parts": [
+					{"pre": "PASSWORD", "answer": "SHA-256", "options": ["SHA-256", "Caesar", "MQTT"]},
+					{"pre": "MESSAGE", "answer": "RSA public key", "options": ["RSA public key", "SHA-256", "Caesar"]}
 				],
-				"answer": 0,
-				"explain": "Kata sandi tidak perlu dibaca kembali, sehingga cukup disimpan sebagai hash satu arah (SHA-256). Pesan rahasia kepada penerima yang memegang kunci publik memerlukan enkripsi dua kunci (RSA). Caesar dan Vigenere adalah sandi substitusi simetris yang mudah dipecahkan dengan analisis frekuensi."
+				"explain": "Hash satu arah digunakan untuk verifikasi kata sandi, sedangkan RSA dengan kunci publik digunakan untuk mengenkripsi pesan bagi penerima yang memiliki kunci privat."
+			},
+			{
+				"id": "candi-5", "title": "Jejak Hash", "type": "cipher", "final": true,
+				"prompt": "Cocokkan jejak hash arsip untuk memastikan pesan tidak diubah.",
+				"lesson": {"text": "Hash yang berubah berarti isi data juga berubah, meskipun nama filenya sama.", "prompt": "Simulasi: kapan arsip harus ditolak?", "options": ["Hash baru berbeda dari hash referensi", "Nama file masih sama", "Ukuran layar berubah"], "answer": 0, "success": "Integritas data dipahami. Verifikasi jejak hash arsip.", "wrong": "Bandingkan nilai hash, bukan hanya nama file."},
+				"ciphertext": "ARSIP", "answer": "ARSIP", "answer_shift": 0,
+				"explain": "Hash dipakai untuk memeriksa integritas. Perbedaan hash menandakan isi arsip berubah dan harus diperiksa sebelum dipercaya."
 			}
 		]
 	},
@@ -371,34 +319,32 @@ const MAPS := [
 		],
 		"challenges": [
 			{
-				"id": "danau-1", "title": "Memilih Komponen", "type": "mcq",
+				"id": "danau-1", "title": "Memilih Komponen", "type": "craft",
 				"prompt": "Komponen apa yang berfungsi mengubah besaran fisik (pH air) menjadi sinyal listrik?",
-				"options": ["Sensor pH", "Mikrokontroler", "Modul WiFi", "Broker MQTT"],
-				"answer": 0,
+				"lesson": {"text": "Sensor menjadi pintu masuk data IoT: ia membaca kondisi fisik lalu menghasilkan sinyal.", "prompt": "Simulasi: pasang komponen input ke slot pengukuran.", "options": ["Sensor pH", "Mikrokontroler", "Broker MQTT"], "answer": 0, "success": "Komponen input dikenali. Rakit pilihan komponen untuk misi.", "wrong": "Cari komponen yang membaca kondisi fisik, bukan yang mengolah atau mengirim data."},
+				"slots": ["Sensor pH Air", "Mikrokontroler Berkemampuan WiFi"],
+				"pool": ["Sensor pH Air", "Mikrokontroler Berkemampuan WiFi", "Broker MQTT"],
 				"explain": "Sensor berperan sebagai komponen input yang mengubah besaran fisik menjadi sinyal listrik. Mikrokontroler mengolah sinyal menjadi data digital, modul WiFi mengirim data, dan broker MQTT meneruskan data ke penerima."
 			},
 			{
-				"id": "danau-2", "title": "Fungsi Daya dan Pengolahan", "type": "mcq",
+				"id": "danau-2", "title": "Fungsi Daya dan Pengolahan", "type": "order",
 				"prompt": "Perangkat pemantau tidak menyala sama sekali, padahal sensor dan mikrokontroler sudah terpasang. Bagian mana yang harus diperiksa lebih dahulu?",
-				"options": [
-					"Sumber daya (kabel USB atau baterai), karena tanpa daya tidak ada komponen yang dapat bekerja",
-					"Broker MQTT, karena broker mengatur pengiriman data",
-					"Dasbor, karena dasbor menampilkan hasil pembacaan",
-					"Kabel jaringan, karena data tidak sampai ke server"
-				],
-				"answer": 0,
+				"lesson": {"text": "Diagnosis IoT mengikuti rantai: daya, input, pengolahan, jaringan, lalu tampilan.", "prompt": "Simulasi: susun urutan pemeriksaan perangkat mati.", "options": ["Daya -> sensor -> mikrokontroler -> jaringan", "Dasbor -> broker -> daya", "Jaringan -> sensor -> daya"], "answer": 0, "success": "Urutan diagnosis benar. Terapkan pada kasus perangkat mati.", "wrong": "Periksa prasyarat paling awal: perangkat harus mendapat daya."},
+				"items": ["Periksa sumber daya", "Periksa sensor dan sinyal input", "Periksa mikrokontroler", "Periksa koneksi jaringan", "Periksa dasbor"],
 				"explain": "Daya adalah prasyarat seluruh rangkaian. Tanpa catu daya, sensor tidak menghasilkan sinyal, mikrokontroler tidak menyala, dan modul WiFi tidak dapat terhubung. Urutan pemeriksaan yang benar: daya → input → pengolahan → pengiriman → penyajian."
 			},
 			{
 				"id": "danau-3", "title": "Merakit Perangkat", "type": "craft",
 				"prompt": "Pasang empat komponen yang kau beli di Kota Unggul ke slot yang benar, dari dasar perakitan sampai perangkat menyala.",
+				"lesson": {"text": "Rangkaian dirakit dari dasar, input, pengolah, lalu sumber daya.", "prompt": "Simulasi: apa yang menjadi dasar rangkaian?", "options": ["Papan rangkaian", "Sensor pH", "Broker MQTT"], "answer": 0, "success": "Dasar rangkaian benar. Susun semua komponen perangkat.", "wrong": "Papan rangkaian menjadi dasar penghubung komponen fisik."},
 				"slots": ["Papan Rangkaian & Kabel Jumper", "Sensor pH Air", "Mikrokontroler Berkemampuan WiFi", "Sumber Daya"],
 				"pool": ["Papan Rangkaian & Kabel Jumper", "Sensor pH Air", "Mikrokontroler Berkemampuan WiFi", "Sumber Daya", "Kipas Pendingin", "Lampu LED"],
 				"explain": "Perakitan dimulai dari papan rangkaian sebagai dasar, lalu sensor pH dipasang sebagai masukan, mikrokontroler sebagai pengolah data, dan sumber daya agar seluruh rangkaian menyala. Broker MQTT dan dasbor bukan komponen fisik yang dibeli — keduanya berada di sisi jaringan."
 			},
 			{
-				"id": "danau-4", "title": "Alur Data ke Dasbor", "type": "order",
+				"id": "danau-6", "title": "Alur Data ke Dasbor", "type": "order", "final": true,
 				"prompt": "Urutkan alur pengiriman data dari danau sampai tampil di dasbor.",
+				"lesson": {"text": "Data IoT bergerak dari dunia fisik menuju pemrosesan, jaringan, broker, lalu pengguna.", "prompt": "Simulasi: susun jalur data sensor.", "options": ["Sensor -> mikrokontroler -> WiFi -> MQTT -> dasbor", "Dasbor -> sensor -> broker -> mikrokontroler", "WiFi -> sensor -> dasbor -> mikrokontroler"], "answer": 0, "success": "Alur data dipahami. Susun jalur lengkap menuju dasbor.", "wrong": "Data dimulai dari sensor dan berakhir pada tampilan dasbor."},
 				"items": [
 					"Sensor pH membaca kondisi air dan mengirim sinyal listrik",
 					"Mikrokontroler mengubah sinyal menjadi data digital",
@@ -406,23 +352,7 @@ const MAPS := [
 					"Broker MQTT meneruskan data ke topik yang sesuai",
 					"Dasbor menampilkan data sehingga kondisi air dapat dipantau"
 				],
-				"explain": "Data mengalir dari sensor (input) ke mikrokontroler (pengolahan), lalu dikirim melalui WiFi menggunakan protokol MQTT ke broker, dan diteruskan ke dasbor sebagai topik yang dilanggani. Jika satu mata rantai terputus, data tidak akan pernah tampil."
-			},
-			{
-				"id": "danau-5", "title": "Tantangan Akhir: Membaca Data Sensor", "type": "mcq", "final": true,
-				"prompt": "Pembacaan tiga perangkat tampil di serial monitor dan diteruskan ke dasbor. Ambang pH normal ditetapkan 6,5 sampai 8,5. Perangkat mana yang menunjukkan kondisi di luar ambang?",
-				"table": {
-					"head": ["Perangkat", "Lokasi", "pH"],
-					"rows": [["Sensor A", "Muara", "5.2"], ["Sensor B", "Tengah danau", "7.1"], ["Sensor C", "Inlet", "8.9"]]
-				},
-				"options": [
-					"Sensor A dan Sensor C",
-					"Hanya Sensor B",
-					"Ketiga sensor berada di luar ambang",
-					"Hanya Sensor A"
-				],
-				"answer": 0,
-				"explain": "pH 5,2 berada di bawah 6,5 (terlalu asam) dan pH 8,9 berada di atas 8,5 (terlalu basa). Hanya Sensor B (7,1) yang berada dalam rentang normal, sehingga dua perangkat lain perlu ditindaklanjuti. Angka yang sama terbaca di serial monitor sebelum dikirim ke dasbor, jadi kesalahan pembacaan dapat ditelusuri dari sensor sampai tampilan."
+				"explain": "Data mengalir dari sensor ke mikrokontroler, jaringan WiFi, broker MQTT, lalu dasbor. Jika satu mata rantai terputus, data tidak akan tampil."
 			}
 		]
 	},

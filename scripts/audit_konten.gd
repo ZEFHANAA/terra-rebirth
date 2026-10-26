@@ -67,7 +67,7 @@ func _struktur() -> void:
 		if m.has("objects"):
 			ok((m["objects"] as Array).size() > 0, "%s: objek pencarian terdaftar" % mid)
 	ok(ids.size() == 6, "jumlah map = 6")
-	ok(Content.total_challenges() == 25, "total tantangan = 25 (didapat %d)" % Content.total_challenges())
+	ok(Content.total_challenges() == 22, "total tantangan = 22 (didapat %d)" % Content.total_challenges())
 	# materi: satu map per materi, urutan tetap
 	for mt in Content.MATERI:
 		var found := 0
@@ -75,11 +75,12 @@ func _struktur() -> void:
 			if str(m.get("material", "")) == mt:
 				found += 1
 		ok(found == 1, "materi '%s' muncul di tepat satu map" % mt)
-	# kota 2 quest pengantar, map materi 5 tantangan
+	# kota 2 quest pengantar, map materi mengikuti desain puzzle baru
 	ok((Content.map_by_id("kota")["challenges"] as Array).size() == 2, "Kota Unggul = 2 quest pengantar")
-	for mid in ["hutan", "pabrik", "danau"]:
-		ok((Content.map_by_id(mid)["challenges"] as Array).size() == 5, "%s = 5 tantangan" % mid)
-	ok((Content.map_by_id("candi")["challenges"] as Array).size() == 4, "candi = 4 tantangan")
+	ok((Content.map_by_id("hutan")["challenges"] as Array).size() == 3, "hutan = 3 tantangan")
+	ok((Content.map_by_id("pabrik")["challenges"] as Array).size() == 4, "pabrik = 4 tantangan")
+	ok((Content.map_by_id("candi")["challenges"] as Array).size() == 5, "candi = 5 tantangan")
+	ok((Content.map_by_id("danau")["challenges"] as Array).size() == 4, "danau = 4 tantangan")
 
 func _posttest() -> void:
 	print("\n-- post-test --")
@@ -325,6 +326,9 @@ func _tipe() -> void:
 			var t := str(c.get("type", ""))
 			var cid := str(c.get("id", "?"))
 			ok(dikenal.has(t), "%s: tipe '%s' dikenal panel puzzle" % [cid, t])
+			if str(m.get("id", "")) in ["hutan", "pabrik", "candi", "danau"]:
+				ok(t != "mcq", "%s: map materi tidak memakai quiz pilihan ganda" % cid)
+				ok(c.has("lesson"), "%s: punya simulasi belajar sebelum puzzle" % cid)
 			match t:
 				"mcq":
 					var o: Array = c.get("options", [])

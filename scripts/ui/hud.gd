@@ -17,6 +17,9 @@ var _coins: Label
 var _obj_marker: Control
 var _obj_arrow: Control
 var _obj_label: Label
+var _quest_panel: PanelContainer
+var _quest_title: Label
+var _quest_progress: Label
 
 ## Panah penunjuk arah ke tujuan berikutnya (objek/NPC yang belum selesai).
 class ObjArrow extends Control:
@@ -101,6 +104,24 @@ func _ready() -> void:
 		t.modulate = Color(1, 1, 1, 0.16)
 		t.tooltip_text = b
 		_badges.add_child(t)
+
+	# ---- misi aktif, tepat di bawah badge
+	_quest_panel = PanelContainer.new()
+	_quest_panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.055, 0.08, 0.125, 0.94), UiKit.GOLD, 10, 1))
+	_quest_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_quest_panel.offset_left = -300
+	_quest_panel.offset_right = -18
+	_quest_panel.offset_top = 66
+	_quest_panel.custom_minimum_size = Vector2(282, 88)
+	add_child(_quest_panel)
+	var quest_box := UiKit.vbox(3)
+	_quest_panel.add_child(quest_box)
+	quest_box.add_child(UiKit.kicker("MISI AKTIF", UiKit.GOLD, 10))
+	_quest_title = UiKit.label("", 14, UiKit.TEXT, 250)
+	_quest_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	quest_box.add_child(_quest_title)
+	_quest_progress = UiKit.label("", 12, UiKit.MUTED)
+	quest_box.add_child(_quest_progress)
 
 	# ---- petunjuk interaksi
 	_prompt = UiKit.label("", 16, UiKit.GOLD)
@@ -194,8 +215,31 @@ func refresh() -> void:
 		_map_sub.text = "%s  ·  %d/%d tantangan" % [str(mm.get("material", "")), Game.map_done(_map_id), Game.map_total(_map_id)]
 	_badge_text.text = "%d / %d" % [Game.badges.size(), BADGE_ORDER.size()]
 	_coins.text = "◆  Uang %d" % Game.coins
+	_refresh_quest()
 
 	for i in range(_badges.get_child_count()):
 		var id: String = BADGE_ORDER[i]
 		var t: TextureRect = _badges.get_child(i)
 		t.modulate = Color(1, 1, 1, 1) if Game.has_badge(id) else Color(1, 1, 1, 0.16)
+
+func _refresh_quest() -> void:
+	if _quest_panel == null or _map_id == "":
+		return
+	var m := Content.map_by_id(_map_id)
+	var challenges: Array = m.get("challenges", [])
+	var next := -1
+	for i in range(challenges.size()):
+		if not Game.done.has(str(challenges[i].get("id", ""))):
+			next = i
+			break
+	if next < 0:
+		_quest_panel.visible = false
+		return
+	var ch: Dictionary = challenges[next]
+	_quest_panel.visible = true
+	_quest_title.text = str(ch.get("title", "Misi berikutnya"))
+	_quest_progress.text = "Misi %d/%d  ·  %s" % [next + 1, challenges.size(), str(ch.get("type", "puzzle")).to_upper()]
+
+func set_quest_exploration_visible(is_visible: bool) -> void:
+	if _quest_panel != null and _quest_panel.visible:
+		_quest_panel.visible = is_visible
