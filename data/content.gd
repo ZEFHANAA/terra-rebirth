@@ -22,6 +22,78 @@ const SUS_REFERENCE := 68.0
 ## Empat materi pembelajaran beserta urutan penyajiannya.
 const MATERI := ["Basis Data", "Sistem Operasi", "Kriptografi", "Internet of Things"]
 
+## ---------------------------------------------------------------- bank soal
+## Revisi dosen: soal tidak lagi statis. Setiap materi punya bank 50 soal dan
+## quest wilayah menarik sebagian soal secara acak, sehingga dua pemain tidak
+## menerima rangkaian soal yang sama.
+const BANK_PER_MATERI := 50
+
+## Berapa soal bank yang dijadikan quest pada tiap wilayah materi.
+## Soal-soal ini ditambahkan sebagai tantangan MCQ di akhir daftar tantangan
+## wilayah, dengan id stabil (mis. "hutan-b1") agar progres tetap tersimpan.
+const BANK_QUIZ := {
+	"hutan": {"materi": "Basis Data", "count": 5},
+	"pabrik": {"materi": "Sistem Operasi", "count": 5},
+	"candi": {"materi": "Kriptografi", "count": 5},
+	"danau": {"materi": "Internet of Things", "count": 5},
+}
+
+## Quest puzzle per wilayah: 2 slot diambil acak dari 10 puzzle materi tersebut.
+## Puzzle tidak memberi koin nyawa tambahan: sekali gagal, nyawa langsung habis.
+const PUZZLE_PER_MATERI := 10
+const PUZZLE_QUIZ := {
+	"hutan": {"materi": "Basis Data", "count": 2},
+	"pabrik": {"materi": "Sistem Operasi", "count": 2},
+	"candi": {"materi": "Kriptografi", "count": 2},
+	"danau": {"materi": "Internet of Things", "count": 2},
+}
+
+## Post-test tetap 20 soal, tetapi diambil acak dari bank: 5 soal per materi.
+const POSTTEST_PER_MATERI := 5
+
+## Nyawa per wilayah. Jawaban salah pertama pada sebuah quest menghabiskan satu
+## nyawa; bila nyawa habis, SELURUH progres dan badge direset dan pemain kembali
+## ke Kota Unggul. Uang, item, dan komponen yang sudah dibeli tetap tersimpan.
+const LIVES_PER_MAP := 3
+
+## Isi bank soal (200 soal) dipisah ke berkas sendiri agar data mudah ditinjau.
+const QUESTION_BANK := preload("res://data/question_bank.gd").BANK
+## Bank puzzle (40 puzzle, 10 per materi) untuk quest berjenis puzzle.
+const PUZZLE_BANK := preload("res://data/puzzle_bank.gd").PUZZLES
+
+## ---------------------------------------------------------------- alur cerita
+## Penutup tiap wilayah: mengikat sebab-akibat antarwilayah dan memberi petunjuk
+## ke wilayah berikutnya, supaya alur cerita tidak berhenti di badge.
+const OUTRO := {
+	"hutan": [
+		"Arsip hutan sudah rapi. Titik paling tercemar ada di hilir, tetapi ada yang aneh: semua kejadian tercatat pada detik yang sama.",
+		"Itu bukan kelalaian manusia. Ada yang membanjiri antrean proses di Pabrik Tua sampai catatan waktu sistem tidak lagi dipercaya.",
+		"Bawa badge ini ke Pabrik Tua. Tanpa memahami cara kerja proses, kau tidak akan tahu perintah mana yang menyumbat sistem.",
+	],
+	"pabrik": [
+		"Pabrik kembali berjalan. Antrean proses normal, dan waktu sistem akurat lagi.",
+		"Tetapi ada satu perintah yang tidak pernah diketik operator. Perintah itu datang sebagai pesan bersandi dari Candi Aksara.",
+		"Buka Candi Aksara dan baca pesannya. Isi pesan itu menentukan ke mana kau harus pergi berikutnya.",
+	],
+	"candi": [
+		"Pesan terbaca: kirim data palsu dari sensor Danau setiap tengah malam.",
+		"Penyusup tidak mematikan mesin. Mereka hanya membuat sistem melihat angka yang tidak pernah terjadi.",
+		"Danau Kabut menunggu. Periksa sensornya, lalu telusuri siapa yang mengirim perintah itu.",
+	],
+	"danau": [
+		"Sensor danau sudah bersih. Data yang masuk kembali sesuai kenyataan.",
+		"Dari jejak perangkat, semua perintah palsu berasal dari satu titik di utara: The Source.",
+		"Wilayah terakhir terbuka. Empat konsep sudah kau pegang; sekarang hadapi sumbernya.",
+	],
+}
+
+## Baris penutup satu wilayah (kosong bila wilayah tidak punya penutup).
+static func outro_of(map_id: String) -> Array:
+	return OUTRO.get(map_id, [])
+
+## Materi yang dipakai untuk soal gabungan di The Source.
+const MIXED_MATERI := "Campuran"
+
 ## Uang hanya diberikan untuk puzzle di Map 2 sampai Map 5 (Bab II 2.5,
 ## Tabel 2.4). Map 1 (hub/tutorial) dan Map 6 (post-test) tidak memberi uang.
 const COINS_PER_CHALLENGE := 10
@@ -75,19 +147,35 @@ const MAPS := [
 		"badge": "", "badge_name": "",
 		"npc_name": "Kepala Kota", "npc_role": "Pemberi tugas", "npc_sprite": "kepala",
 		"npcs": [
-			{"id": "kepala", "name": "Kepala Kota", "role": "Pemberi tugas", "sprite": "kepala", "x": 30, "y": 12, "action": "quest"},
+			{"id": "kepala", "name": "Kepala Kota", "role": "Pengajar pengantar", "sprite": "kepala", "x": 30, "y": 12, "action": "materi",
+				"story": [
+					"Aku sudah tiga puluh tahun mencatat setiap sumur di kota ini.",
+					"Anakku dulu yang memeriksa kualitas air; sekarang giliranmu.",
+				]},
 			{"id": "gerbang", "name": "Penjaga Gerbang", "role": "Penjaga jalan", "sprite": "penjaga", "x": 52, "y": 18, "action": "gate",
+				"story": [
+					"Gerbang ini hanya terbuka bagi yang membawa badge wilayah sebelumnya.",
+					"Aku tidak bosan mengulanginya setiap hari.",
+				],
 				"dialog": [
 					"Gerbang ini hanya terbuka bagi yang sudah menyelesaikan seluruh quest di wilayahnya. Bukan karena aku pelit, tapi karena wilayah di luar sana tidak bersahabat bagi yang belum siap.",
 					"Aturannya satu: selesaikan semua quest di satu wilayah, maka badge wilayah itu kau dapat. Badge itulah kunci gerbang berikutnya."
 				]},
 			{"id": "pedagang", "name": "Pedagang", "role": "Penjual item & komponen", "sprite": "pedagang", "x": 14, "y": 18, "action": "shop",
+				"story": [
+					"Barangku datang dari Danau, tetapi sejak sensor di sana rusak, kiriman berhenti.",
+					"Kalau butuh komponen, beli dulu di sini.",
+				],
 				"dialog": [
 					"Uang? Aku terima. Uang itu bukan badge, jadi ia tidak membuka gerbang apa pun — hanya bisa ditukar barang di sini.",
 					"Aku juga menyimpan komponen perangkat pemantau air: sensor pH, papan rangkaian dan kabel jumper, mikrokontroler ber-WiFi, serta sumber daya. Tanpa keempatnya, perakitan di Danau Citra tidak akan jalan.",
 					"Lensa Analisis paling laris. Sekali pakai, tapi cukup untuk membuka petunjuk saat kau benar-benar buntu."
 				]},
 			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti", "x": 40, "y": 22, "action": "info",
+				"story": [
+					"Aku mengukur pH air kota setiap pagi; angkanya terus turun.",
+					"Kota butuh orang yang paham data, bukan cuma berani.",
+				],
 				"dialog": [
 					"Aku mencatat kerusakan lingkungan di enam wilayah. Polanya selalu sama: data kacau, mesin berhenti, pesan tak terbaca, lalu alat pemantau mati.",
 					"Karena itu perjalananmu disusun berurutan: Basis Data di Hutan, Sistem Operasi di Pabrik, Kriptografi di Candi, lalu IoT di Danau. Yang terakhir adalah sumbernya.",
@@ -99,6 +187,18 @@ const MAPS := [
 			"Selamat datang di Kota Unggul, pengembara. Dulu kota ini makmur, sampai catatan data, mesin, sandi, dan perangkat pemantau kami rusak satu per satu.",
 			"Kami butuh seseorang yang memahami cara kerja keempatnya. Bukan sekadar menghafal, tetapi mampu memakainya saat keadaan mendesak.",
 			"Aturannya sederhana: selesaikan seluruh quest di satu wilayah, dan kau memperoleh badge wilayah itu. Badge itulah yang membuka jalan berikutnya. Satu quest saja belum cukup."
+		],
+		"objects": [
+			{"id": "kota-papan", "label": "Papan Pengumuman", "x": 33, "y": 16, "challenge": "kota-1", "icon": "sign",
+				"text": [
+					"Papan ini berisi pengumuman warga: siapa yang boleh masuk wilayah, apa syaratnya, dan bagaimana data disimpan.",
+					"Aturan aksesnya ditulis sebagai baris tabel. Kalau kau bisa membacanya, kau bisa menyusun pengumuman yang benar."
+				]},
+			{"id": "kota-buku", "label": "Buku Aturan", "x": 44, "y": 20, "challenge": "kota-2", "icon": "sign",
+				"text": [
+					"Buku ini mencatat urutan pemeriksaan sebelum seseorang diizinkan masuk ke wilayah baru.",
+					"Setiap langkah punya syarat. Kalau urutannya salah, pemeriksaan berhenti di tengah jalan."
+				]},
 		],
 		"challenges": [
 			{
@@ -132,6 +232,32 @@ const MAPS := [
 		"desc": "Catatan sumber air rusak dan lokasi pencemaran hilang. Susun ulang data untuk menemukannya.",
 		"badge": "nature", "badge_name": "Nature Data Crystal",
 		"npc_name": "Peneliti Hutan", "npc_role": "Ahli data lingkungan", "npc_sprite": "peneliti",
+		"npcs": [
+			{"id": "peneliti", "name": "Peneliti Hutan", "role": "Pengajar Basis Data", "sprite": "peneliti", "x": 18, "y": 6, "action": "materi",
+				"story": [
+					"Aku menanam pohon di hulu sejak sebelum pabrik berdiri.",
+					"Sekarang aku mencatat setiap perubahan air, bukan menebang.",
+				]},
+			{"id": "arsip", "name": "Asisten Arsip", "role": "Penyusun tabel", "sprite": "penjaga", "x": 11, "y": 9, "action": "info",
+				"story": [
+					"Aku menyalin ulang tabel sumber air setiap pagi.",
+					"Salah satu kolom yang keliru bisa membuat seluruh laporan salah.",
+				],
+				"challenge": "hutan-p1",
+				"dialog": [
+					"Aku menyalin ulang tabel sumber air setiap pagi. Kolom id_sumber tidak pernah kembar, sedangkan nama dan pH bisa berulang.",
+					"Kalau kau mau tahu di mana kunci relasi diletakkan, tanyakan pada Peneliti Hutan. Dia yang mengajari materi ini."
+				]},
+			{"id": "petani", "name": "Petani Hulu", "role": "Saksi pencemaran", "sprite": "pedagang", "x": 31, "y": 14, "action": "info",
+				"story": [
+					"Sawahku bergantung pada air hulu, dan air itu berubah warna.",
+					"Aku tidak bisa membaca data, jadi kuserahkan catatanku padamu.",
+				],
+				"dialog": [
+					"Air di hulu berubah warna sejak pabrik berdiri. Aku mencatatnya, tetapi catatanku terpisah dari data lokasi.",
+					"Papan data dan buku registri di sekitar hutan masih menyimpan keterangan. Mulai quest dari benda itu, bukan dari orang."
+				]},
+		],
 		"req_badge": "", "req_clear": "kota",
 		"intro": [
 			"Kau datang tepat waktu. Arsip hutan ini kacau: tabel sumber air terpisah dari tabel lokasi, dan tidak ada yang tahu titik mana yang paling tercemar.",
@@ -152,6 +278,16 @@ const MAPS := [
 				"text": [
 					"Catatan ini menyebut dua tabel yang terpisah: sumber air dan lokasi. Tidak ada query yang bisa menggabungkannya.",
 					"Kalau kau bisa menulis query yang menghubungkan keduanya, daftar titik tercemar bisa disusun ulang."
+				]},
+			{"id": "hutan-terminal", "label": "Terminal Soal", "bank": true, "x": 21, "y": 17, "icon": "sign",
+				"text": [
+					"Terminal ini menampilkan soal acak dari bank soal Basis Data.",
+					"Setiap jawaban benar membuka soal baru sampai kuota ujian terpenuhi."
+				]},
+			{"id": "hutan-pompa", "label": "Pompa Rusak", "puzzle": true, "x": 24, "y": 17, "icon": "sign",
+				"text": [
+					"Pompa penyaring air berhenti sejak banjir terakhir.",
+					"Susun langkah perbaikannya dengan benar; salah urutan, pompa jebol.",
 				]},
 		],
 		"challenges": [
@@ -207,10 +343,68 @@ const MAPS := [
 		"desc": "Mesin pengolahan berhenti. Atur proses dan sumber daya agar pabrik kembali bekerja.",
 		"badge": "core", "badge_name": "Core Fragment",
 		"npc_name": "Teknisi Mesin", "npc_role": "Operator pabrik", "npc_sprite": "teknisi",
+		"npcs": [
+			{"id": "teknisi", "name": "Teknisi Mesin", "role": "Pengajar Sistem Operasi", "sprite": "teknisi", "x": 17, "y": 8, "action": "materi",
+				"story": [
+					"Aku merawat mesin sejak pabrik masih berjalan normal.",
+					"Sejak antrean proses macet, aku tidur di lantai ini.",
+				]},
+			{"id": "operator", "name": "Operator Lini", "role": "Pengatur antrean proses", "sprite": "penjaga", "x": 9, "y": 12, "action": "info",
+				"story": [
+					"Aku menekan tombol yang sama setiap shift, tetapi hasilnya berbeda.",
+					"Ada yang mengubah jadwal proses tanpa memberitahuku.",
+				],
+				"challenge": "pabrik-p1",
+				"dialog": [
+					"Antrean proses di lini ini macet sejak pagi. Proses yang selesai I/O tidak kembali ke running, tetapi menunggu di ready.",
+					"Materinya diajarkan Teknisi Mesin. Kalau kau sudah paham, periksa panel dan mesin di lantai pabrik untuk memulai quest."
+				]},
+			{"id": "mandor", "name": "Mandor Pabrik", "role": "Pengawas lantai", "sprite": "pedagang", "x": 29, "y": 15, "action": "info",
+				"story": [
+					"Aku mencatat setiap mesin yang berhenti, satu per satu.",
+					"Laporan itu tidak berguna kalau tidak ada yang membaca.",
+				],
+				"dialog": [
+					"Setiap mesin di sini punya panel sendiri. Panel itu yang mencatat masalah, bukan mulut pekerja.",
+					"Jadi jangan menungguku membuka misi. Dekati panel atau mesin yang bertanda tanya."
+				]},
+		],
 		"req_badge": "nature", "req_clear": "",
 		"intro": [
 			"Mesinnya tidak rusak. Masalahnya penjadwalan: proses saling menunggu sumber daya yang dipegang proses lain, lalu semuanya berhenti.",
 			"Kalau kau bisa membaca keadaan proses dan mengatur urutannya, mesin ini bisa hidup lagi dalam hitungan menit."
+		],
+		"objects": [
+			{"id": "pabrik-panel", "label": "Panel Proses", "x": 10, "y": 6, "challenge": "pabrik-1", "icon": "sign",
+				"text": [
+					"Panel menampilkan daftar proses beserta keadaannya. Satu proses berhenti tepat setelah operasi I/O selesai.",
+					"Untuk memulihkannya, kau harus tahu ke keadaan apa proses itu kembali."
+				]},
+			{"id": "pabrik-kendali", "label": "Ruang Kendali", "x": 24, "y": 9, "challenge": "pabrik-2", "icon": "sign",
+				"text": [
+					"Ruang ini mengatur proses mana yang boleh memakai CPU. Dispatcher hanya memilih dari antrean yang siap.",
+					"Susun urutan langkah agar sebuah proses baru dapat berjalan pertama kali."
+				]},
+			{"id": "pabrik-mesin", "label": "Mesin Utama", "x": 14, "y": 15, "challenge": "pabrik-3", "icon": "sign",
+				"text": [
+					"Mesin berhenti karena dua proses saling menunggu sumber daya yang dipegang proses lain.",
+					"Cari cara mencegah kondisi itu terjadi lagi."
+				]},
+			{"id": "pabrik-jadwal", "label": "Jadwal Lini", "x": 30, "y": 13, "challenge": "pabrik-4", "icon": "sign",
+				"text": [
+					"Jadwal lini menunjukkan proses mana yang harus dilayani lebih dulu agar tidak ada yang menunggu terlalu lama.",
+					"Bandingkan algoritma penjadwalan yang tersedia dan pilih yang paling tepat untuk beban kerja ini."
+				]},
+			{"id": "pabrik-terminal", "label": "Terminal Soal", "bank": true, "x": 21, "y": 17, "icon": "sign",
+				"text": [
+					"Terminal ini menampilkan soal acak dari bank soal Sistem Operasi.",
+					"Setiap soal yang berhasil dijawab akan diganti soal baru sampai kuota ujian terpenuhi."
+				]},
+			{"id": "pabrik-katup", "label": "Katup Macet", "puzzle": true, "x": 21, "y": 19, "icon": "sign",
+				"text": [
+					"Katup uap macet di posisi terbuka.",
+					"Urutan penutupan yang salah akan merusak pipa dan menghabiskan nyawamu.",
+				]},
 		],
 		"challenges": [
 			{
@@ -258,10 +452,73 @@ const MAPS := [
 		"desc": "Prasasti menyimpan pesan terenkripsi tentang penyebab kerusakan lingkungan.",
 		"badge": "cipher", "badge_name": "Cipher Key",
 		"npc_name": "Penjaga Arsip", "npc_role": "Penjaga prasasti", "npc_sprite": "penjaga",
+		"npcs": [
+			{"id": "arsip", "name": "Penjaga Arsip", "role": "Pengajar Kriptografi", "sprite": "penjaga", "x": 19, "y": 7, "action": "materi",
+				"story": [
+					"Aku menjaga prasasti ini sejak masih utuh.",
+					"Setiap huruf yang hilang membuat satu kisah ikut hilang.",
+				]},
+			{"id": "juru_sandi", "name": "Juru Sandi", "role": "Pembaca cipher", "sprite": "peneliti", "x": 9, "y": 13, "action": "info",
+				"story": [
+					"Aku membaca pesan lama untuk orang yang belum lahir.",
+					"Sandi ini bukan hiasan; ini peringatan.",
+				],
+				"challenge": "candi-p1",
+				"dialog": [
+					"Aku membuka prasasti ini dengan pergeseran huruf. Caesar menggeser tiap huruf dengan jumlah yang sama, Vigenere memakai kunci berulang.",
+					"Teorinya diajarkan Penjaga Arsip. Praktiknya ada di prasasti dan meja sandi sekitar candi."
+				]},
+			{"id": "pemulung", "name": "Pemulung Misterius", "role": "Saksi kejadian", "sprite": "pedagang", "x": 31, "y": 15, "action": "info",
+				"story": [
+					"Aku mencari sisa logam di sekitar candi untuk dijual.",
+					"Suatu malam aku melihat cahaya di sumur pesan.",
+				],
+				"dialog": [
+					"Semua kejadian di candi ini tercatat pada detik yang sama. Aneh, bukan?",
+					"Aku hanya pemulung. Yang tahu arti catatan itu penjaga arsip. Kalau butuh quest, cari prasasti atau meja yang bertanda tanya."
+				]},
+		],
 		"req_badge": "core", "req_clear": "",
 		"intro": [
 			"Prasasti ini ditulis oleh leluhur kami. Isinya tidak boleh dibaca sembarang orang, jadi mereka menguncinya dengan sandi.",
 			"Aku hanya bisa memberi petunjuk, bukan jawabannya. Kau harus mengenali polanya sendiri."
+		],
+		"objects": [
+			{"id": "candi-prasasti", "label": "Prasasti Tua", "x": 12, "y": 6, "challenge": "candi-1", "icon": "sign",
+				"text": [
+					"Prasasti ini ditulis dengan pergeseran huruf. Setiap huruf digeser dengan jumlah yang sama.",
+					"Baca pesannya, lalu tentukan pergeseran yang dipakai."
+				]},
+			{"id": "candi-meja", "label": "Meja Sandi", "x": 26, "y": 8, "challenge": "candi-2", "icon": "sign",
+				"text": [
+					"Di meja ini tersisa kunci sandi berulang dan potongan pesan yang sudah dienkripsi.",
+					"Cocokkan kunci dengan pesan untuk membuka isinya."
+				]},
+			{"id": "candi-relief", "label": "Relief Sandi", "x": 14, "y": 14, "challenge": "candi-3", "icon": "sign",
+				"text": [
+					"Relief menggambarkan pesan yang harus disandikan ulang agar tidak bisa dibaca pencuri.",
+					"Pilih metode yang sesuai dengan kebutuhan kerahasiaan di relief itu."
+				]},
+			{"id": "candi-gapura", "label": "Gapura Terkunci", "x": 30, "y": 12, "challenge": "candi-4", "icon": "sign",
+				"text": [
+					"Gapura ini hanya terbuka bila checksum pesan cocok dengan yang tercatat.",
+					"Hitung nilai hash sederhana dari pesan yang tertera."
+				]},
+			{"id": "candi-sumur", "label": "Sumur Pesan", "x": 22, "y": 17, "challenge": "candi-5", "icon": "sign",
+				"text": [
+					"Sumur ini menyimpan pesan terakhir penjaga candi. Sebagian hurufnya hilang.",
+					"Pulihkan pesan itu dengan aturan sandi yang sudah kau pelajari."
+				]},
+			{"id": "candi-terminal", "label": "Terminal Soal", "bank": true, "x": 24, "y": 18, "icon": "sign",
+				"text": [
+					"Terminal batu ini menampilkan soal acak dari bank soal Kriptografi.",
+					"Jawab dengan benar untuk membuka soal berikutnya sampai kuota ujian terpenuhi."
+				]},
+			{"id": "candi-lonceng", "label": "Lonceng Retak", "puzzle": true, "x": 13, "y": 19, "icon": "sign",
+				"text": [
+					"Lonceng penanda waktu retak dan nadanya tidak lagi sama.",
+					"Susun langkah perbaikannya; salah langkah, lonceng pecah.",
+				]},
 		],
 		"challenges": [
 			{
@@ -311,11 +568,69 @@ const MAPS := [
 		"desc": "Danau tercemar dan perlu sistem pemantauan kualitas air dari sensor hingga dasbor.",
 		"badge": "aqua", "badge_name": "Aqua Signal Core",
 		"npc_name": "Inventor", "npc_role": "Perakit perangkat", "npc_sprite": "inventor",
+		"npcs": [
+			{"id": "inventor", "name": "Inventor", "role": "Pengajar Internet of Things", "sprite": "inventor", "x": 27, "y": 8, "action": "materi",
+				"story": [
+					"Aku merakit alat pengukur air dari barang bekas.",
+					"Alatku sempat bekerja, lalu mati karena daya habis.",
+				]},
+			{"id": "teknisi_sensor", "name": "Teknisi Sensor", "role": "Kalibrasi alat", "sprite": "teknisi", "x": 33, "y": 14, "action": "info",
+				"story": [
+					"Aku mengkalibrasi sensor setiap minggu.",
+					"Angka yang melenceng membuat laporan dipercaya padahal salah.",
+				],
+				"challenge": "danau-p1",
+				"dialog": [
+					"Sensor pH harus dikalibrasi sebelum dipakai. Tanpa kalibrasi, angka 7,0 pun bisa berarti 6,4.",
+					"Materi lengkapnya dari Inventor. Perakitan dan pengujian dilakukan di meja kerja dan dermaga, bukan di sini."
+				]},
+			{"id": "nelayan", "name": "Nelayan Danau", "role": "Warga danau", "sprite": "pedagang", "x": 25, "y": 17, "action": "info",
+				"story": [
+					"Ikan di danau ini menipis sejak airnya keruh.",
+					"Aku tidak paham angka, tetapi aku tahu danau sedang sakit.",
+				],
+				"dialog": [
+					"Ikan di danau ini menghilang sejak alat pemantau mati. Kami tidak tahu airnya masih layak atau tidak.",
+					"Kalau kau mau menolong, rakit dulu perangkatnya di meja kerja. Ambil quest dari benda di peta."
+				]},
+		],
 		"req_badge": "cipher", "req_clear": "",
 		"intro": [
 			"Danau ini tercemar, dan kami butuh alat pemantau kualitas air. Masalahnya, komponennya tidak ada di wilayah ini — semuanya harus dibeli di toko Kota Unggul.",
 			"Ada empat komponen yang kau perlukan: sensor pH air, papan rangkaian dan kabel jumper, mikrokontroler berkemampuan WiFi, serta sumber daya berupa kabel USB atau baterai.",
 			"Uang dari puzzle di Hutan, Pabrik, dan Candi cukup untuk membelinya. Setelah keempat komponen lengkap, kembali ke sini dan rakit perangkatnya."
+		],
+		"objects": [
+			{"id": "danau-dermaga", "label": "Dermaga Sensor", "x": 24, "y": 9, "challenge": "danau-1", "icon": "sign",
+				"text": [
+					"Sensor pH di dermaga mati. Kabelnya masih tersambung, tetapi tidak ada data yang dikirim.",
+					"Tentukan bagian perangkat yang harus diperiksa lebih dulu."
+				]},
+			{"id": "danau-meja", "label": "Meja Perakitan", "x": 33, "y": 9, "challenge": "danau-2", "icon": "sign",
+				"text": [
+					"Meja ini berisi mikrokontroler, sensor, dan modul jaringan yang belum dirakit.",
+					"Susun urutan perakitan agar perangkat pemantau dapat bekerja."
+				]},
+			{"id": "danau-menara", "label": "Menara Sinyal", "x": 30, "y": 16, "challenge": "danau-3", "icon": "sign",
+				"text": [
+					"Menara sinyal hanya menerima data dari perangkat yang memakai protokol ringan.",
+					"Pilih protokol yang paling sesuai untuk pengiriman data sensor."
+				]},
+			{"id": "danau-pos", "label": "Pos Pemantau", "x": 25, "y": 14, "challenge": "danau-6", "icon": "sign",
+				"text": [
+					"Pos ini menerima data sensor, tetapi dasbor belum menampilkan kondisi danau.",
+					"Susun alur data dari perangkat sampai dasbor untuk menuntaskan quest terakhir."
+				]},
+			{"id": "danau-terminal", "label": "Terminal Soal", "bank": true, "x": 26, "y": 16, "icon": "sign",
+				"text": [
+					"Terminal ini menampilkan soal acak dari bank soal Internet of Things.",
+					"Soal berganti setiap kali kau menjawab benar, sampai kuota ujian terpenuhi."
+				]},
+			{"id": "danau-pipa", "label": "Pipa Bocor", "puzzle": true, "x": 26, "y": 16, "icon": "sign",
+				"text": [
+					"Pipa penyalur air bocor di sambungan.",
+					"Susun urutan perbaikan dengan tepat; kalau salah, sambungan patah.",
+				]},
 		],
 		"challenges": [
 			{
@@ -361,12 +676,59 @@ const MAPS := [
 		"desc": "Final dungeon. Semua yang kau pelajari diuji sekaligus, lalu post-test dikerjakan di sini.",
 		"badge": "", "badge_name": "",
 		"npc_name": "Guardian", "npc_role": "Penjaga sumber", "npc_sprite": "guardian",
+		"npcs": [
+			{"id": "guardian", "name": "Guardian", "role": "Pengajar materi akhir", "sprite": "guardian", "x": 20, "y": 12, "action": "materi",
+				"story": [
+					"Aku menjaga inti sumber sejak generasi sebelumnya.",
+					"Hanya yang memahami seluruh materi boleh lewat.",
+				]},
+			{"id": "analis", "name": "Penjaga Sumber", "role": "Analis akhir", "sprite": "penjaga", "x": 9, "y": 8, "action": "info",
+				"story": [
+					"Aku memeriksa data dari semua wilayah, satu per satu.",
+					"Polanya sama: kesalahan kecil yang dibiarkan menumpuk.",
+				],
+				"dialog": [
+					"Di sumber ini semua materi bertemu: data, proses, sandi, dan perangkat.",
+					"Aku tidak memberi quest. Aku hanya menjaga. Quest ada pada benda dan tempat di sekitar sumber."
+				]},
+			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti", "x": 31, "y": 16, "action": "info",
+				"story": [
+					"Aku datang dari kota untuk menutup kasus ini.",
+					"Ternyata jawabannya ada pada catatan yang tak pernah dibaca.",
+				],
+				"dialog": [
+					"Enam wilayah, satu pola: data kacau, mesin berhenti, pesan tak terbaca, lalu alat mati.",
+					"Semua yang kau pelajari bermuara di sini. Bicara dulu dengan Guardian sebelum menghadapi sumbernya."
+				]},
+		],
 		"req_badge": "aqua", "req_clear": "",
 		"intro": [
 			"Kau sampai juga. Di sini tidak ada petunjuk bertahap. Data, sistem, sandi, dan perangkat harus kau pakai bersamaan.",
 			"Empat ujian terakhir. Jika kau lulus, sumber kerusakan akan berhenti dan Terra pulih."
 		],
 		"boss": {"name": "The Source", "hp": 4},
+		"objects": [
+			{"id": "source-inti", "label": "Inti Sumber", "x": 14, "y": 8, "challenge": "source-1", "icon": "sign",
+				"text": [
+					"Inti sumber memancarkan data bercampur. Hanya sebagian yang bisa dibaca.",
+					"Tentukan cara memisahkan data yang sah dari yang rusak."
+				]},
+			{"id": "source-pilar", "label": "Pilar Data", "x": 26, "y": 10, "challenge": "source-2", "icon": "sign",
+				"text": [
+					"Pilar ini menyimpan rekaman seluruh wilayah dalam satu tabel besar.",
+					"Susun query untuk mengambil hanya rekaman yang dibutuhkan."
+				]},
+			{"id": "source-altar", "label": "Altar Sandi", "x": 30, "y": 15, "challenge": "source-3", "icon": "sign",
+				"text": [
+					"Altar mengunci dirinya dengan sandi yang berubah tiap menit.",
+					"Pilih metode sandi yang paling tepat untuk penguncian seperti itu."
+				]},
+			{"id": "source-gerbang", "label": "Gerbang Akhir", "x": 16, "y": 14, "challenge": "source-4", "icon": "sign",
+				"text": [
+					"Gerbang terakhir hanya terbuka bila seluruh materi dipahami.",
+					"Buktikan pemahamanmu pada soal terakhir di gerbang ini."
+				]},
+		],
 		"challenges": [
 			{
 				"id": "source-1", "title": "Ujian Data", "type": "mcq",
@@ -417,112 +779,6 @@ const MAPS := [
 
 ## Post-test: 20 soal pilihan ganda, 5 soal untuk setiap materi (Bab III 3.9).
 ## Setiap butir diberi tanda materi agar skor per bidang dapat dilaporkan.
-const TEST_ITEMS := [
-	# ---------------- Basis Data (5)
-	{"m": "Basis Data",
-	 "q": "Apa perbedaan utama antara primary key dan foreign key?",
-	 "o": ["Primary key boleh kosong, foreign key tidak boleh kosong",
-		   "Primary key unik untuk tiap baris, foreign key merujuk ke primary key tabel lain",
-		   "Keduanya sama, hanya berbeda nama",
-		   "Foreign key harus unik, primary key boleh berulang"],
-	 "a": 1},
-	{"m": "Basis Data",
-	 "q": "Pada relasi satu ke banyak antara tabel lokasi dan tabel sumber_air, di mana foreign key diletakkan?",
-	 "o": ["Di tabel lokasi sebagai kolom id_sumber",
-		   "Di tabel sumber_air sebagai kolom id_lokasi",
-		   "Di tabel perantara yang dibuat khusus",
-		   "Tidak diperlukan foreign key"],
-	 "a": 1},
-	{"m": "Basis Data",
-	 "q": "Klausa mana yang dipakai untuk menyaring hasil fungsi agregat?",
-	 "o": ["WHERE", "ORDER BY", "HAVING", "GROUP BY"], "a": 2},
-	{"m": "Basis Data",
-	 "q": "Klausa mana yang menentukan urutan baris hasil query dari pH terendah ke tertinggi?",
-	 "o": ["GROUP BY ph", "ORDER BY ph ASC", "WHERE ph ASC", "HAVING ph ASC"], "a": 1},
-	{"m": "Basis Data",
-	 "q": "Laporan harus menampilkan semua lokasi, termasuk yang belum memiliki data sumber air. JOIN yang tepat adalah?",
-	 "o": ["INNER JOIN",
-		   "CROSS JOIN",
-		   "Tanpa JOIN",
-		   "LEFT JOIN dengan lokasi sebagai tabel kiri"],
-	 "a": 3},
-
-	# ---------------- Sistem Operasi (5)
-	{"m": "Sistem Operasi",
-	 "q": "Proses yang menunggu operasi I/O berada pada keadaan?",
-	 "o": ["Running", "Ready", "Waiting", "Terminated"], "a": 2},
-	{"m": "Sistem Operasi",
-	 "q": "Setelah operasi I/O selesai, proses berpindah ke keadaan?",
-	 "o": ["Running", "Terminated", "New", "Ready"], "a": 3},
-	{"m": "Sistem Operasi",
-	 "q": "Algoritma penjadwalan yang memilih proses dengan burst time terkecil lebih dulu adalah?",
-	 "o": ["SJF", "FCFS", "Round Robin", "Priority"], "a": 0},
-	{"m": "Sistem Operasi",
-	 "q": "Tujuan penerapan mutual exclusion pada sumber daya bersama adalah?",
-	 "o": ["Semua proses memakai sumber daya secara bersamaan",
-		   "Sumber daya dihapus dari sistem",
-		   "Proses tercepat selalu didahulukan",
-		   "Hanya satu proses memakai sumber daya pada satu waktu"],
-	 "a": 3},
-	{"m": "Sistem Operasi",
-	 "q": "P1 memegang X dan menunggu Y, P2 memegang Y dan menunggu X. Kondisi ini disebut?",
-	 "o": ["Deadlock", "Starvation", "Thrashing", "Race condition"], "a": 0},
-
-	# ---------------- Kriptografi (5)
-	{"m": "Kriptografi",
-	 "q": "Caesar cipher dengan pergeseran 3 mengubah huruf A menjadi?",
-	 "o": ["D", "C", "X", "B"], "a": 0},
-	{"m": "Kriptografi",
-	 "q": "Ciphertext UHELUWK dihasilkan dengan Caesar cipher pergeseran 3. Teks aslinya adalah?",
-	 "o": ["REMOTE", "REBORN", "REBIRTH", "RETURN"], "a": 2},
-	{"m": "Kriptografi",
-	 "q": "Pada ciphertext panjang, huruf H paling sering muncul, sedangkan pada bahasa Indonesia huruf tersering adalah E. Pergeseran yang paling mungkin adalah?",
-	 "o": ["2", "5", "3", "7"], "a": 2},
-	{"m": "Kriptografi",
-	 "q": "Sifat utama fungsi hash kriptografi seperti SHA-256 adalah?",
-	 "o": ["Satu arah dan menghasilkan nilai dengan panjang tetap",
-		   "Dapat dibalik dengan mudah menggunakan kunci",
-		   "Selalu menghasilkan ciphertext yang bisa didekripsi",
-		   "Hanya bekerja pada data angka"],
-	 "a": 0},
-	{"m": "Kriptografi",
-	 "q": "Untuk menyimpan kata sandi pengguna, metode yang paling tepat adalah?",
-	 "o": ["Caesar cipher",
-		   "Vigenere cipher",
-		   "Enkripsi RSA dengan kunci publik",
-		   "Fungsi hash seperti SHA-256"],
-	 "a": 3},
-
-	# ---------------- Internet of Things (5)
-	{"m": "Internet of Things",
-	 "q": "Komponen IoT yang mengubah besaran fisik menjadi sinyal listrik adalah?",
-	 "o": ["Sensor", "Aktuator", "Broker", "Gateway"], "a": 0},
-	{"m": "Internet of Things",
-	 "q": "Fungsi utama mikrokontroler pada perangkat IoT adalah?",
-	 "o": ["Menyimpan data permanen di cloud",
-		   "Membaca sinyal sensor dan mengubahnya menjadi data digital",
-		   "Menampilkan grafik pada dasbor",
-		   "Menyediakan sambungan listrik dari jaringan PLN"],
-	 "a": 1},
-	{"m": "Internet of Things",
-	 "q": "Protokol pesan ringan yang umum dipakai perangkat IoT untuk mengirim data ke broker adalah?",
-	 "o": ["HTTP", "MQTT", "FTP", "SMTP"], "a": 1},
-	{"m": "Internet of Things",
-	 "q": "Urutan alur data pada sistem pemantauan kualitas air yang benar adalah?",
-	 "o": ["Sensor → broker MQTT → mikrokontroler → dasbor → modul WiFi",
-		   "Dasbor → broker MQTT → sensor → mikrokontroler → modul WiFi",
-		   "Mikrokontroler → sensor → dasbor → broker MQTT → modul WiFi",
-		   "Sensor → mikrokontroler → modul WiFi → broker MQTT → dasbor"],
-	 "a": 3},
-	{"m": "Internet of Things",
-	 "q": "Ambang pH normal 6,5–8,5. Pembacaan 5,2 dan 8,9 termasuk?",
-	 "o": ["Keduanya di dalam ambang",
-		   "Hanya 5,2 yang di luar ambang",
-		   "Keduanya di luar ambang: terlalu asam dan terlalu basa",
-		   "Hanya 8,9 yang di luar ambang"],
-	 "a": 2}
-]
-
 ## Kuesioner SUS (10 butir, skala 1-5) — instrumen Bab III 3.9, interpretasi mengacu Tabel 3.4.
 const SUS_ITEMS := [
 	"Saya ingin sering menggunakan game ini.",
@@ -537,11 +793,86 @@ const SUS_ITEMS := [
 	"Saya perlu belajar banyak hal sebelum bisa memainkan game ini."
 ]
 
+## Peta yang sudah diperluas dengan quest dari bank soal. Hasil perluasan
+## disimpan agar id tantangan tetap sama setiap kali dipanggil.
+static var _expanded_maps: Dictionary = {}
+
+## Mengembalikan data peta. Untuk wilayah materi, daftar tantangan sudah
+## ditambah soal acak dari bank (BANK_QUIZ) dengan id stabil "<map>-b<n>".
 static func map_by_id(id: String) -> Dictionary:
+	if _expanded_maps.has(id):
+		return _expanded_maps[id]
 	for m in MAPS:
 		if m["id"] == id:
-			return m
+			var out: Dictionary = m.duplicate(true)
+			_expand_bank(out)
+			_expanded_maps[id] = out
+			return out
 	return {}
+
+## Menambahkan tantangan MCQ dari bank soal ke satu peta (sekali saja).
+static func _expand_bank(m: Dictionary) -> void:
+	var mid := str(m.get("id", ""))
+	if not BANK_QUIZ.has(mid):
+		return
+	var cfg: Dictionary = BANK_QUIZ[mid]
+	var n := int(cfg.get("count", 0))
+	var chs: Array = m["challenges"]
+	for i in range(n):
+		chs.append({
+			"id": "%s-b%d" % [mid, i + 1],
+			"title": "Uji %s %d" % [str(cfg["materi"]), i + 1],
+			"type": "mcq",
+			"bank_materi": str(cfg["materi"]),
+			"bank_slot": i,
+			"final": false,
+		})
+	# quest puzzle: 2 slot, diambil acak dari 10 puzzle materi yang sama
+	if not PUZZLE_QUIZ.has(mid):
+		return
+	var pcfg: Dictionary = PUZZLE_QUIZ[mid]
+	for i in range(int(pcfg.get("count", 0))):
+		chs.append({
+			"id": "%s-p%d" % [mid, i + 1],
+			"title": "Puzzle %s %d" % [str(pcfg["materi"]), i + 1],
+			"type": "puzzle",
+			"puzzle_bank": true,
+			"bank_materi": str(pcfg["materi"]),
+			"fatal": true,
+			"final": false,
+		})
+
+static func bank_of(materi: String) -> Array:
+	return QUESTION_BANK.get(materi, [])
+
+static func puzzles_of(materi: String) -> Array:
+	return PUZZLE_BANK.get(materi, [])
+
+## Menduplikasi soal bank ke format post-test lama (m=..., a=...).
+static func items_by_ids(ids: Array) -> Array:
+	var out: Array = []
+	for id in ids:
+		for materi in MATERI:
+			for q in bank_of(materi):
+				if str(q.get("id", "")) == str(id):
+					out.append({"id": q["id"], "m": materi, "q": q["prompt"], "o": q["options"], "a": q["answer"], "why": q["explain"]})
+					break
+	return out
+
+## Memilih 5 soal per materi secara acak; hasilnya disimpan agar stabil saat save.
+static func posttest_ids(participant: String) -> Array:
+	var out: Array = []
+	for materi in MATERI:
+		var bank := bank_of(materi).duplicate()
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		for i in range(POSTTEST_PER_MATERI):
+			if bank.is_empty():
+				break
+			var at := rng.randi_range(0, bank.size() - 1)
+			out.append(str(bank[at].get("id", "")))
+			bank.remove_at(at)
+	return out
 
 static func map_index(id: String) -> int:
 	for i in range(MAPS.size()):
@@ -577,20 +908,9 @@ static func total_challenges() -> int:
 		n += (m["challenges"] as Array).size()
 	return n
 
-## Jumlah soal post-test untuk satu materi.
-## Kunci jawaban post-test dalam bentuk larik (dipakai uji otomatis & demo).
-static func answer_key() -> Array:
-	var out: Array = []
-	for it in TEST_ITEMS:
-		out.append(int(it["a"]))
-	return out
-
-static func test_count_for(materi: String) -> int:
-	var n := 0
-	for it in TEST_ITEMS:
-		if str(it["m"]) == materi:
-			n += 1
-	return n
+## Contoh set post-test (dipakai audit untuk memeriksa bentuk instrumen).
+static func flat_test_items() -> Array:
+	return items_by_ids(posttest_ids("AUDIT"))
 
 ## Daftar NPC pada satu map. Map yang belum punya daftar sendiri
 ## memakai satu NPC pemberi tugas dari data lama.

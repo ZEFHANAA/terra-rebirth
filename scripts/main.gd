@@ -25,6 +25,7 @@ var _hud_layer: CanvasLayer
 var _modal_layer: CanvasLayer
 var _fade: ColorRect
 var _toast: Label
+var _toast_tw: Tween
 
 var hud: Control
 var dialog: Control
@@ -41,6 +42,7 @@ var ending_screen: Control
 var _pending_badge := ""
 var _dialog_intent := ""   # "quest" | "info" | "gate" | "shop" | "object"
 var _pending_object := ""
+var _npc_quest := ""      # id tantangan puzzle yang ditawarkan NPC
 
 func _ready() -> void:
 	_ensure_inputs()
@@ -102,6 +104,8 @@ func _ready() -> void:
 	_modal_layer.add_child(puzzle)
 	puzzle.solved.connect(_on_puzzle_solved)
 	Game.map_completed.connect(_on_map_completed)
+	Game.map_failed.connect(_on_map_failed)
+	Game.lives_changed.connect(func(_id: String, _lives: int): hud.refresh())
 	puzzle.closed.connect(func(): pass)
 
 	shop = SHOP_SCRIPT.new()
@@ -211,7 +215,7 @@ func _run_demo(kind: String) -> void:
 			await get_tree().create_timer(0.4).timeout
 			dialog.visible = false
 			_open_asesmen()
-			asesmen._post = Content.answer_key()
+			asesmen._post = Game.answer_key()
 			asesmen._sus = [4, 2, 4, 2, 4, 2, 4, 2, 4, 2]
 			asesmen._stage = "sus"
 			asesmen._qi = 0
@@ -223,7 +227,7 @@ func _run_demo(kind: String) -> void:
 			await get_tree().create_timer(0.4).timeout
 			dialog.visible = false
 			_open_asesmen()
-			asesmen._post = Content.answer_key()
+			asesmen._post = Game.answer_key()
 			asesmen._result = Game.grade_posttest(asesmen._post)
 			asesmen._sus = [4, 2, 4, 2, 4, 2, 4, 2, 4, 2]
 			asesmen._sus_score = Game.sus_score(asesmen._sus)
@@ -234,7 +238,7 @@ func _run_demo(kind: String) -> void:
 			# durasi dibuat wajar (18,4 menit) supaya contoh data di layar rekap
 			# tidak menampilkan 0,0 menit — nilainya tetap dihitung oleh game.
 			Game.session_start = int(Time.get_unix_time_from_system()) - 1104
-			Game.submit_posttest(Content.answer_key())
+			Game.submit_posttest(Game.answer_key())
 			Game.submit_sus([4, 2, 4, 2, 4, 2, 4, 2, 4, 2])
 			_open_research()
 		"ending":
@@ -801,7 +805,7 @@ func _demo_asesmen() -> void:
 	var pg := 0
 	while asesmen._stage == "posttest" and pg < 40:
 		pg += 1
-		var a := int(Content.TEST_ITEMS[int(asesmen._qi)]["a"])
+		var a := int(Game.posttest_items()[int(asesmen._qi)]["a"])
 		var opts: Array = []
 		for c in asesmen._box.get_children():
 			if c is Button and (c as Button).button_group != null:
@@ -1087,6 +1091,10 @@ func _ensure_inputs() -> void:
 
 # ------------------------------------------------------------------ layar
 func _hide_all() -> void:
+	_hide_toast()
+	# Panel tantangan bisa tertutup tanpa lewat tombol tutup; kembalikan tema dasar
+	# supaya HUD, dialog, dan peta tidak ikut memakai bahan wilayah terakhir.
+	UiKit.set_theme("")
 	title_screen.visible = false
 	map_screen.visible = false
 	research_screen.visible = false
@@ -1143,6 +1151,7 @@ func _open_asesmen() -> void:
 		return
 	dialog.visible = false
 	puzzle.visible = false
+	_hide_toast()
 	asesmen.open()
 
 func _on_asesmen_finished() -> void:
@@ -1203,14 +1212,14 @@ func _load_map(id: String) -> void:
 	if Game.is_map_cleared(id):
 		_toast_msg("Wilayah selesai — cari gerbang bercahaya di tepi peta", 2.6)
 	else:
-		var target := _quest_npc_name(m)
+		var target := _first_object_label(m)
 		if target != "":
-			_toast_msg("Temui %s — tanda ! di atas kepalanya" % target, 3.0)
+			_toast_msg("Cari %s — tanda ? di peta. Bicara ke NPC untuk materi." % target, 3.4)
 
-func _quest_npc_name(m: Dictionary) -> String:
-	for n in Content.npcs_of(m):
-		if str(n.get("action", "quest")) == "quest":
-			return str(n.get("name", ""))
+## Objek pertama pada peta dipakai sebagai penunjuk arah quest.
+func _first_object_label(m: Dictionary) -> String:
+	for o in m.get("objects", []):
+		return str(o.get("label", ""))
 	return ""
 
 func _open_dialog(n: Dictionary, lines: Array, intent: String) -> void:
@@ -1237,28 +1246,51 @@ func _on_talk_npc(npc_id: String) -> void:
 	if n.is_empty():
 		return
 	var action := str(n.get("action", "quest"))
+	# Setiap NPC membuka ceritanya sendiri sebelum urusan lain.
+	_npc_quest = ""
+	var lines: Array = []
+	for s in n.get("story", []):
+		lines.append(str(s))
+	var ctx: Array = n.get("dialog", [])
+	var tawaran := ""
+	if n.has("challenge") and not Game.done.has(str(n["challenge"])):
+		tawaran = "Aku butuh bantuanmu. Selesaikan puzzle di dekatku — kalau gagal, nyawamu habis."
 	if action == "shop":
-		_open_dialog(n, n.get("dialog", []), "shop")
+		lines.append_array(ctx)
+		_open_dialog(n, lines, "shop")
 		return
 	if action == "gate":
-		_open_dialog(n, _gate_lines(), "gate")
+		lines.append_array(_gate_lines())
+		_open_dialog(n, lines, "gate")
 		return
 	if action == "info":
-		_open_dialog(n, n.get("dialog", []), "info")
+		lines.append_array(ctx)
+		if tawaran != "":
+			_npc_quest = str(n["challenge"])
+			lines.append(tawaran)
+		_open_dialog(n, lines, "npcquest" if _npc_quest != "" else "info")
 		return
-	# pemberi tugas
-	if Game.is_map_cleared(current_map):
-		_open_dialog(n, [
-			"Kau sudah menyelesaikan semua tantangan di wilayah ini.",
-			"Gerbang menuju wilayah berikutnya sudah terbuka. Cari gerbang bercahaya di tepi peta."
-		], "info")
-	elif Game.map_done(current_map) > 0:
-		_open_dialog(n, ["Kita lanjutkan. Tantangan berikutnya menunggumu."], "quest")
+	if not ctx.is_empty():
+		lines.append("%s. %s" % [str(n.get("role", "")), str(ctx[0])])
+	lines.append_array(_lesson_lines(m))
+	if tawaran != "":
+		_npc_quest = str(n["challenge"])
+		lines.append(tawaran)
 	else:
-		_open_dialog(n, _intro_lines(m), "quest")
+		lines.append("Quest lain bisa dimulai dari benda bertanda ? di peta.")
+	_open_dialog(n, lines, "npcquest" if _npc_quest != "" else "info")
 
-## Dialog pembuka wilayah. Danau Citra menyesuaikan apakah komponen perangkat
-## sudah dibeli di toko atau belum (Bab III 3.6.4).
+## Pelajaran muncul hanya saat berbicara dengan NPC pengajar.
+func _lesson_lines(m: Dictionary) -> Array:
+	var lines: Array = ["Materi %s — pilih soal dan contoh pada objek bertanda ? di peta." % str(m.get("material", "wilayah"))]
+	for ch in m.get("challenges", []):
+		if ch.has("lesson"):
+			lines.append("%s: %s" % [str(ch.get("title", "Konsep")), str(ch["lesson"].get("text", ""))])
+		elif ch.has("explain"):
+			lines.append("%s: %s" % [str(ch.get("title", "Konsep")), str(ch.get("explain", ""))])
+	return lines
+
+## Dialog konteks wilayah. Materi pembelajaran tetap khusus lewat NPC pengajar.
 func _intro_lines(m: Dictionary) -> Array:
 	if str(m.get("id", "")) != "danau":
 		return m["intro"]
@@ -1303,8 +1335,43 @@ func _resolve_object() -> void:
 	_pending_object = ""
 	if o.is_empty():
 		return
-	if o.has("challenge"):
+	if bool(o.get("puzzle", false)):
+		_open_next_puzzle_challenge()
+		return
+	if bool(o.get("bank", false)):
+		_open_next_bank_challenge()
+	elif o.has("challenge"):
+		var challenge := _challenge_by_id(str(o["challenge"]))
+		if str(challenge.get("type", "")) == "craft" and not Game.all_components():
+			_toast_msg("Komponen belum lengkap — beli di toko Kota Unggul.", 3.0)
+			return
 		_open_challenge(str(o["challenge"]))
+
+func _challenge_by_id(cid: String) -> Dictionary:
+	for ch in Content.map_by_id(current_map).get("challenges", []):
+		if str(ch.get("id", "")) == cid:
+			return ch
+	return {}
+
+## Terminal objek memulai satu soal bank; pemain harus kembali ke terminal
+## untuk setiap soal berikutnya, bukan otomatis berpindah quest.
+func _open_next_bank_challenge() -> void:
+	var m := Content.map_by_id(current_map)
+	for i in range(m["challenges"].size()):
+		var ch: Dictionary = m["challenges"][i]
+		if ch.has("bank_materi") and not Game.done.has(str(ch["id"])):
+			puzzle.open(_with_boss(ch, m), i, m["challenges"].size())
+			return
+	_toast_msg("Semua soal terminal di wilayah ini selesai.", 2.5)
+
+func _open_next_puzzle_challenge() -> void:
+	var m := Content.map_by_id(current_map)
+	for i in range(m["challenges"].size()):
+		var ch: Dictionary = m["challenges"][i]
+		if ch.has("puzzle_bank") and not Game.done.has(str(ch["id"])):
+			puzzle.open(_with_boss(ch, m), i, m["challenges"].size())
+			return
+	_toast_msg("Semua puzzle di wilayah ini selesai.", 2.5)
 
 func _open_challenge(cid: String) -> void:
 	_toast.modulate.a = 0.0
@@ -1359,28 +1426,16 @@ func _on_dialog_finished() -> void:
 	if intent == "object":
 		_resolve_object()
 		return
-	if intent == "quest" and not Game.is_map_cleared(current_map):
-		_open_next_challenge()
-
-func _open_next_challenge() -> void:
-	var m := Content.map_by_id(current_map)
-	var chs: Array = m["challenges"]
-	var idx := -1
-	for i in range(chs.size()):
-		if not Game.done.has(chs[i]["id"]):
-			idx = i
-			break
-	if idx < 0:
+	if intent == "npcquest":
+		var cid := _npc_quest
+		_npc_quest = ""
+		if cid != "" and not Game.done.has(cid):
+			_open_challenge(cid)
 		return
-	var ch: Dictionary = chs[idx]
-	if str(ch.get("type", "")) == "craft" and not Game.all_components():
-		var nama: Array[String] = []
-		for id in Game.missing_components():
-			nama.append(Game.component_name(str(id)))
-		_toast_msg("Komponen belum lengkap (%d/%d) — beli di toko Kota Unggul: %s" % [
-			Game.component_count(), Game.COMPONENT_TOTAL, ", ".join(nama)], 3.2)
-		return
-	puzzle.open(_with_boss(ch, m), idx, chs.size())
+	if intent == "outro":
+		var nxt := Game.next_map_id(current_map)
+		if nxt != "" and Game.map_unlocked(nxt):
+			_toast_msg("%s telah terbuka. Lanjutkan dari Peta Wilayah." % str(Content.map_by_id(nxt).get("name", "")), 3.0)
 
 func _on_puzzle_solved(challenge_id: String) -> void:
 	var was_cleared := Game.is_map_cleared(current_map)
@@ -1401,11 +1456,19 @@ func _on_puzzle_solved(challenge_id: String) -> void:
 		return  # badge popup akan muncul lewat signal
 	await get_tree().create_timer(0.35).timeout
 	if state == "playing" and not Game.is_map_cleared(current_map):
-		var mm := Content.map_by_id(current_map)
-		if mm.has("objects"):
-			_toast_msg("Cari objek bertanda ? di sekitar peta", 2.4)
-		else:
-			_open_next_challenge()
+		_toast_msg("Quest selesai. Lanjutkan lewat objek bertanda ? di peta.", 2.6)
+
+## Nyawa habis: seluruh progres dan badge dihapus, tetapi uang, item, dan
+## komponen yang sudah dibeli tetap tersimpan. Pemain mulai lagi dari Kota Unggul.
+func _on_map_failed(map_id: String) -> void:
+	if puzzle != null and is_instance_valid(puzzle):
+		puzzle.visible = false
+	_toast_msg("Nyawa habis — semua progres dan badge direset. Uang dan barang tetap tersimpan.", 4.0)
+	await get_tree().create_timer(2.0).timeout
+	if state == "playing":
+		_start_play("kota")
+		await get_tree().process_frame
+		_toast_msg("Mulai lagi dari Kota Unggul. Bicara ke NPC pengajar untuk materi, lalu cari objek bertanda ?.", 3.6)
 
 func _on_map_completed(map_id: String) -> void:
 	if _world and is_instance_valid(_world) and _world.portal_node:
@@ -1422,6 +1485,19 @@ func _on_badge_earned(badge_id: String, badge_name: String) -> void:
 
 func _on_badge_closed() -> void:
 	_pending_badge = ""
+	_show_outro()
+
+## Penutup wilayah: hanya sekali per wilayah, agar alur cerita tetap utuh
+## tanpa mengulang dialog setiap kali pemain kembali.
+func _show_outro() -> void:
+	var lines := Content.outro_of(current_map)
+	if lines.is_empty() or Game.outro_seen.has(current_map):
+		return
+	Game.outro_seen[current_map] = true
+	Game.save_game()
+	var m := Content.map_by_id(current_map)
+	dialog.open(str(m.get("npc_name", "Pemandu")), "Penutup wilayah", lines, str(m.get("npc_sprite", "")))
+	_dialog_intent = "outro"
 
 ## Keputusan pemain di akhir menentukan teks ending (sesuai Bab II 2.6).
 func _show_ending_choice() -> void:
@@ -1484,11 +1560,27 @@ func _on_enter_portal() -> void:
 	_fade_in_then(func(): _load_map(nxt))
 	Game.sfx("sfx_portal")
 
+## Pesan singkat di tengah atas. Disembunyikan saat pindah layar supaya tidak
+## menembus Peta Wilayah, menu, atau layar akhir.
 func _toast_msg(text: String, dur: float) -> void:
+	if _toast == null:
+		return
+	if state == "title" or state == "map" or state == "research" or state == "ending":
+		return
+	if _toast_tw != null and _toast_tw.is_valid():
+		_toast_tw.kill()
 	_toast.text = text
 	_toast.modulate.a = 1.0
-	var tw := create_tween()
-	tw.tween_property(_toast, "modulate:a", 0.0, dur).set_delay(0.6)
+	_toast_tw = create_tween()
+	_toast_tw.tween_property(_toast, "modulate:a", 0.0, dur).set_delay(0.6)
+
+func _hide_toast() -> void:
+	if _toast == null:
+		return
+	if _toast_tw != null and _toast_tw.is_valid():
+		_toast_tw.kill()
+	_toast.text = ""
+	_toast.modulate.a = 0.0
 
 func _fade_in_then(cb: Callable) -> void:
 	var tw := create_tween()

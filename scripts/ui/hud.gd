@@ -14,6 +14,7 @@ var _progress: Label
 var _prompt: Label
 var _badges: HBoxContainer
 var _coins: Label
+var _lives: Label
 var _obj_marker: Control
 var _obj_arrow: Control
 var _obj_label: Label
@@ -49,7 +50,7 @@ func _ready() -> void:
 
 	# ---- panel kiri atas
 	var left := PanelContainer.new()
-	left.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.055, 0.08, 0.125, 0.92), UiKit.BORDER, 12, 1))
+	left.add_theme_stylebox_override("panel", UiKit.ribbon_style())
 	left.position = Vector2(18, 14)
 	left.custom_minimum_size = Vector2(250, 0)
 	add_child(left)
@@ -64,8 +65,13 @@ func _ready() -> void:
 	_badge_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_badge_text)
 
-	_coins = UiKit.label("◆  Uang 0", 13, UiKit.GOLD)
+	_coins = UiKit.label("◆  Uang 0", 15, Color("f5d98d"))
 	lv.add_child(_coins)
+	_lives = UiKit.label("", 15, Color("f0927a"))
+	lv.add_child(_lives)
+	for lb in [_coins, _lives, _badge_text]:
+		(lb as Label).add_theme_color_override("font_outline_color", Color(0.06, 0.04, 0.02, 0.9))
+		(lb as Label).add_theme_constant_override("outline_size", 4)
 
 	# ---- judul peta (tengah atas)
 	var center := VBoxContainer.new()
@@ -75,19 +81,19 @@ func _ready() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 	_map_title = UiKit.title("KOTA UNGGUL", 13, UiKit.TEXT)
-	_map_title.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	_map_title.add_theme_color_override("font_outline_color", Color(0.03, 0.06, 0.04, 0.95))
 	_map_title.add_theme_constant_override("outline_size", 5)
 	_map_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	center.add_child(_map_title)
-	_map_sub = UiKit.label("", 13, Color(0.78, 0.85, 0.93, 0.9))
-	_map_sub.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.9))
+	_map_sub = UiKit.label("", 13, UiKit.MUTED)
+	_map_sub.add_theme_color_override("font_outline_color", Color(0.03, 0.06, 0.04, 0.9))
 	_map_sub.add_theme_constant_override("outline_size", 5)
 	_map_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	center.add_child(_map_sub)
 
 	# ---- badge kanan atas
 	var right := PanelContainer.new()
-	right.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.055, 0.08, 0.125, 0.92), UiKit.BORDER, 12, 1))
+	right.add_theme_stylebox_override("panel", UiKit.ribbon_style())
 	right.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	right.offset_left = -250
 	right.offset_right = -18
@@ -107,7 +113,7 @@ func _ready() -> void:
 
 	# ---- misi aktif, tepat di bawah badge
 	_quest_panel = PanelContainer.new()
-	_quest_panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.055, 0.08, 0.125, 0.94), UiKit.GOLD, 10, 1))
+	_quest_panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color("16241b"), UiKit.GOLD, 3, 2, false))
 	_quest_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_quest_panel.offset_left = -300
 	_quest_panel.offset_right = -18
@@ -125,7 +131,7 @@ func _ready() -> void:
 
 	# ---- petunjuk interaksi
 	_prompt = UiKit.label("", 16, UiKit.GOLD)
-	_prompt.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	_prompt.add_theme_color_override("font_outline_color", Color(0.03, 0.06, 0.04, 0.95))
 	_prompt.add_theme_constant_override("outline_size", 6)
 	_prompt.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_prompt.offset_top = -54
@@ -145,7 +151,7 @@ func _ready() -> void:
 	_obj_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_obj_marker.add_child(_obj_arrow)
 	_obj_label = UiKit.label("", 14, UiKit.GOLD)
-	_obj_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.95))
+	_obj_label.add_theme_color_override("font_outline_color", Color(0.03, 0.06, 0.04, 0.95))
 	_obj_label.add_theme_constant_override("outline_size", 5)
 	_obj_marker.add_child(_obj_label)
 
@@ -215,6 +221,7 @@ func refresh() -> void:
 		_map_sub.text = "%s  ·  %d/%d tantangan" % [str(mm.get("material", "")), Game.map_done(_map_id), Game.map_total(_map_id)]
 	_badge_text.text = "%d / %d" % [Game.badges.size(), BADGE_ORDER.size()]
 	_coins.text = "◆  Uang %d" % Game.coins
+	_lives.text = "Nyawa %d/%d" % [Game.lives_left(_map_id), Content.LIVES_PER_MAP]
 	_refresh_quest()
 
 	for i in range(_badges.get_child_count()):

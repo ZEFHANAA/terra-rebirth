@@ -253,9 +253,9 @@ func _build_npcs() -> void:
 		lb.reset_size()
 		lb.position = _clamp_label(spr.position + Vector2(-lb.size.x * 0.5, 18), lb.size.x)
 
-		# penanda misi di atas NPC pemberi tugas
+		# penanda di atas NPC pengajar materi
 		var mark: Label = null
-		if str(n.get("action", "quest")) == "quest":
+		if str(n.get("action", "")) == "materi":
 			mark = Label.new()
 			mark.text = "!"
 			mark.add_theme_font_override("font", UiKit.pixel_font())
@@ -270,7 +270,7 @@ func _build_npcs() -> void:
 
 		npcs.append({"id": str(n.get("id", "utama")), "name": str(n.get("name", "NPC")),
 			"action": str(n.get("action", "quest")), "node": spr, "mark": mark})
-		if str(n.get("action", "quest")) == "quest" and npc_node == null:
+		if npc_node == null:
 			npc_node = spr
 
 ## Ukuran satu frame pada sheet NPC.

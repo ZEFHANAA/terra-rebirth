@@ -119,7 +119,7 @@ func refresh() -> void:
 	var recs := Game.read_records()
 	_info.text = "%d peserta tercatat  ·  berkas: %s  ·  instrumen: post-test %d soal, SUS %d butir, batas tuntas %d" % [
 		recs.size(), Game.record_path.get_file(),
-		Content.TEST_ITEMS.size(), Content.SUS_ITEMS.size(), Content.PASSING_SCORE]
+		Game.posttest_items().size(), Content.SUS_ITEMS.size(), Content.PASSING_SCORE]
 	for c in _grid.get_children():
 		c.queue_free()
 	if recs.is_empty():

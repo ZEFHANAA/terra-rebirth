@@ -32,7 +32,7 @@ func _ready() -> void:
 	add_child(bottom)
 
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.063, 0.09, 0.14, 0.97), UiKit.BORDER, 14, 1))
+	_panel.add_theme_stylebox_override("panel", UiKit.frame_style(26, 20))
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	bottom.add_child(_panel)
 
@@ -42,10 +42,10 @@ func _ready() -> void:
 	# Potret NPC di sisi kiri.
 	var portrait_box := PanelContainer.new()
 	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color("182436")
-	psb.border_color = UiKit.BORDER
-	psb.set_border_width_all(1)
-	psb.set_corner_radius_all(10)
+	psb.bg_color = Color("0f1d14")
+	psb.border_color = Color("6f9a4a")
+	psb.set_border_width_all(2)
+	psb.set_corner_radius_all(2)
 	psb.content_margin_left = 10
 	psb.content_margin_right = 10
 	psb.content_margin_top = 10

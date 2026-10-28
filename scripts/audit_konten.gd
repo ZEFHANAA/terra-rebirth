@@ -33,6 +33,8 @@ func _initialize() -> void:
 	_toko()
 	_aset()
 	_tipe()
+	_puzzle_bank()
+	_cerita()
 	print("\n=== %d cek, %d gagal ===" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -40,7 +42,8 @@ func _struktur() -> void:
 	print("\n-- struktur peta --")
 	var ids: Array = []
 	var prev_badge := ""
-	for m in Content.MAPS:
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw["id"]))
 		ids.append(str(m["id"]))
 		var mid := str(m["id"])
 		var chs: Array = m.get("challenges", [])
@@ -50,6 +53,9 @@ func _struktur() -> void:
 			uniq[str(c["id"])] = true
 		ok(uniq.size() == chs.size(), "%s: id tantangan unik (%d)" % [mid, chs.size()])
 		var last: Dictionary = chs[chs.size() - 1]
+		for c in chs:
+			if not c.has("bank_materi"):
+				last = c
 		if mid != "kota":
 			ok(bool(last.get("final", false)), "%s: tantangan terakhir ditandai final" % mid)
 		# badge & syarat
@@ -67,7 +73,7 @@ func _struktur() -> void:
 		if m.has("objects"):
 			ok((m["objects"] as Array).size() > 0, "%s: objek pencarian terdaftar" % mid)
 	ok(ids.size() == 6, "jumlah map = 6")
-	ok(Content.total_challenges() == 22, "total tantangan = 22 (didapat %d)" % Content.total_challenges())
+	ok(Content.total_challenges() == 22, "total tantangan dasar = 22 (bank ditambahkan saat map dimuat)")
 	# materi: satu map per materi, urutan tetap
 	for mt in Content.MATERI:
 		var found := 0
@@ -77,17 +83,33 @@ func _struktur() -> void:
 		ok(found == 1, "materi '%s' muncul di tepat satu map" % mt)
 	# kota 2 quest pengantar, map materi mengikuti desain puzzle baru
 	ok((Content.map_by_id("kota")["challenges"] as Array).size() == 2, "Kota Unggul = 2 quest pengantar")
-	ok((Content.map_by_id("hutan")["challenges"] as Array).size() == 3, "hutan = 3 tantangan")
-	ok((Content.map_by_id("pabrik")["challenges"] as Array).size() == 4, "pabrik = 4 tantangan")
-	ok((Content.map_by_id("candi")["challenges"] as Array).size() == 5, "candi = 5 tantangan")
-	ok((Content.map_by_id("danau")["challenges"] as Array).size() == 4, "danau = 4 tantangan")
+	ok((Content.map_by_id("hutan")["challenges"] as Array).size() == 10, "hutan = 3 quest + 2 puzzle + 5 soal bank")
+	ok((Content.map_by_id("pabrik")["challenges"] as Array).size() == 11, "pabrik = 4 quest + 2 puzzle + 5 soal bank")
+	ok((Content.map_by_id("candi")["challenges"] as Array).size() == 12, "candi = 5 quest + 2 puzzle + 5 soal bank")
+	ok((Content.map_by_id("danau")["challenges"] as Array).size() == 11, "danau = 4 quest + 2 puzzle + 5 soal bank")
+	_bank()
+
+func _bank() -> void:
+	print("\n-- bank soal --")
+	for materi in Content.MATERI:
+		var bank := Content.bank_of(materi)
+		ok(bank.size() == 50, "%s memiliki 50 soal bank" % materi)
+		var ids := {}
+		for q in bank:
+			var qid := str(q.get("id", ""))
+			ids[qid] = true
+			var opts: Array = q.get("options", [])
+			ok(opts.size() == 4, "%s: soal %s punya 4 opsi" % [materi, qid])
+			ok(int(q.get("answer", -1)) >= 0 and int(q.get("answer", -1)) < opts.size(), "%s: kunci %s valid" % [materi, qid])
+			ok(not str(q.get("explain", "")).is_empty(), "%s: penjelasan %s ada" % [materi, qid])
+		ok(ids.size() == bank.size(), "%s: ID bank unik" % materi)
 
 func _posttest() -> void:
 	print("\n-- post-test --")
-	ok(Content.TEST_ITEMS.size() == 20, "20 soal")
+	ok(Content.flat_test_items().size() == 20, "20 soal")
 	var per := {}
 	var soal := {}
-	for it in Content.TEST_ITEMS:
+	for it in Content.flat_test_items():
 		var mt := str(it["m"])
 		per[mt] = int(per.get(mt, 0)) + 1
 		ok(Content.MATERI.has(mt), "materi soal dikenal: %s" % mt)
@@ -103,12 +125,13 @@ func _posttest() -> void:
 	ok(soal.size() == 20, "tidak ada soal duplikat")
 	for mt in Content.MATERI:
 		ok(int(per.get(mt, 0)) == 5, "%s: 5 soal (didapat %d)" % [mt, int(per.get(mt, 0))])
-	# sebaran kunci: jangan semua di satu opsi
+	# sebaran kunci: dihitung dari seluruh bank agar tidak bergantung undian acak
 	var dist := [0, 0, 0, 0]
-	for it in Content.TEST_ITEMS:
-		dist[int(it["a"])] += 1
-	print("      sebaran kunci A/B/C/D: ", dist)
-	ok(dist.min() >= 2, "kunci tersebar (tiap opsi minimal 2 kali)")
+	for mt in Content.MATERI:
+		for q in Content.bank_of(mt):
+			dist[int(q["answer"])] += 1
+	print("      sebaran kunci A/B/C/D (seluruh bank): ", dist)
+	ok(dist.min() >= 10, "kunci tersebar (tiap opsi minimal 10 kali di bank)")
 
 func _sus() -> void:
 	print("\n-- SUS --")
@@ -127,7 +150,8 @@ func _sus() -> void:
 
 func _sandi() -> void:
 	print("\n-- sandi Caesar --")
-	for m in Content.MAPS:
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw.get("id", "")))
 		for c in m.get("challenges", []):
 			if str(c.get("type", "")) != "cipher":
 				continue
@@ -213,7 +237,8 @@ func _rujukan() -> void:
 	print("\n-- rujukan silang --")
 	var semua := {}
 	var ganda := []
-	for m in Content.MAPS:
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw.get("id", "")))
 		for c in m.get("challenges", []):
 			var cid := str(c["id"])
 			if semua.has(cid):
@@ -230,6 +255,15 @@ func _rujukan() -> void:
 				continue   # komponen yang dikumpulkan, bukan tantangan
 			var ref := str(o.get("challenge", ""))
 			ok(ada.has(ref), "%s: %s menunjuk tantangan %s" % [mid, str(o.get("id", "?")), ref])
+		# objek bank hanya boleh ada di wilayah yang benar-benar punya soal bank
+		var bank_ada := false
+		for c in Content.map_by_id(mid).get("challenges", []):
+			if c.has("bank_materi"):
+				bank_ada = true
+				break
+		for o in m.get("objects", []):
+			if bool(o.get("bank", false)):
+				ok(bank_ada, "%s: %s berisi soal bank" % [mid, str(o.get("id", "?"))])
 		for n in Content.npcs_of(m):
 			for ref in n.get("quest", []):
 				ok(ada.has(str(ref)), "%s: quest NPC %s menunjuk %s" % [mid, str(n.get("id", "?")), str(ref)])
@@ -271,13 +305,18 @@ func _toko() -> void:
 		harga += int((Content.SHOP.get(str(id), {}) as Dictionary).get("price", 0))
 	ok(harga <= keping, "harga komponen (%d) <= uang dari Map 2-4 (%d)" % [harga, keping])
 	# Komponen tidak lagi ditemukan di peta (Bab III 3.6.4).
-	ok(not Content.map_by_id("danau").has("objects"),
+	var danau_gives := false
+	for o in Content.map_by_id("danau").get("objects", []):
+		if o.has("gives") or o.has("component"):
+			danau_gives = true
+	ok(not danau_gives,
 		"Danau tidak menyediakan komponen di peta — semuanya dibeli di Kota Unggul")
 	for m in Content.MAPS:
 		for o in m.get("objects", []):
 			ok(not o.has("gives"), "%s: objek %s tidak memberi komponen" % [str(m["id"]), str(o.get("id", "?"))])
 	# Nama komponen di slot perakitan harus sama dengan nama di toko.
-	for m in Content.MAPS:
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw.get("id", "")))
 		for c in m.get("challenges", []):
 			if str(c.get("type", "")) != "craft":
 				continue
@@ -317,17 +356,77 @@ func _aset() -> void:
 				"%s: sprite NPC %s ('%s') ada" % [mid, str(n.get("id", "?")), spr])
 	ok(ResourceLoader.exists("res://assets/ui/badge_guardian.png"), "ikon badge guardian (Map 6) ada")
 
+## Bank puzzle: 10 per materi, ragam variatif, dan data tiap puzzle lengkap.
+func _puzzle_bank() -> void:
+	print("\n-- bank puzzle --")
+	for materi in Content.MATERI:
+		var bank := Content.puzzles_of(materi)
+		ok(bank.size() == Content.PUZZLE_PER_MATERI,
+			"%s: %d puzzle siap diundi" % [materi, bank.size()])
+		var ids := {}
+		var ragam := {}
+		for p in bank:
+			var pid := str(p.get("id", "?"))
+			ids[pid] = true
+			ragam[str(p.get("type", ""))] = true
+			ok(str(p.get("prompt", "")) != "", "%s: punya prompt" % pid)
+			ok(str(p.get("explain", "")) != "", "%s: punya penjelasan" % pid)
+			match str(p.get("type", "")):
+				"order":
+					ok((p.get("steps", []) as Array).size() >= 3, "%s: >= 3 langkah untuk diurutkan" % pid)
+				"fill":
+					ok(str(p.get("code", "")).contains("___"), "%s: punya bagian rumpang" % pid)
+					ok((p.get("accept", []) as Array).size() > 0, "%s: punya kunci jawaban" % pid)
+				_:
+					ok(false, "%s: tipe puzzle dikenal" % pid)
+		ok(ids.size() == bank.size(), "%s: id puzzle tidak kembar" % materi)
+		ok(ragam.size() >= 2, "%s: ragam puzzle variatif (urutan + rumpang)" % materi)
+
+## Cerita NPC: setiap NPC punya cerita sendiri, dan quest tidak hanya dari benda.
+func _cerita() -> void:
+	print("\n-- cerita NPC --")
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw.get("id", "")))
+		for n in Content.npcs_of(m):
+			var story: Array = n.get("story", [])
+			ok(story.size() >= 2, "%s: NPC %s punya cerita sendiri" % [str(m["id"]), str(n.get("id", "?"))])
+	for mid in ["hutan", "pabrik", "candi", "danau"]:
+		var m2 := Content.map_by_id(mid)
+		var ada_npc := false
+		for n2 in Content.npcs_of(m2):
+			if n2.has("challenge"):
+				ada_npc = true
+		ok(ada_npc, "%s: ada NPC yang memberi quest puzzle" % mid)
+		var ada_rusak := false
+		for o in m2.get("objects", []):
+			if bool(o.get("puzzle", false)):
+				ada_rusak = true
+		ok(ada_rusak, "%s: ada benda rusak yang bisa diperbaiki" % mid)
+
 ## Tipe tantangan: harus dikenal panel puzzle dan punya data yang cukup.
 func _tipe() -> void:
 	print("\n-- tipe tantangan --")
-	var dikenal := ["mcq", "build", "order", "cipher", "craft"]
-	for m in Content.MAPS:
+	var dikenal := ["mcq", "build", "order", "cipher", "craft", "fill", "puzzle"]
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw.get("id", "")))
 		for c in m.get("challenges", []):
 			var t := str(c.get("type", ""))
 			var cid := str(c.get("id", "?"))
 			ok(dikenal.has(t), "%s: tipe '%s' dikenal panel puzzle" % [cid, t])
+			if c.has("puzzle_bank"):
+				ok(t == "puzzle", "%s: tantangan puzzle memakai tipe puzzle" % cid)
+				ok(bool(c.get("fatal", false)), "%s: puzzle gagal langsung menghabiskan nyawa" % cid)
+				var pb := Content.puzzles_of(str(c["bank_materi"]))
+				ok(pb.size() == Content.PUZZLE_PER_MATERI,
+					"%s: bank puzzle %s siap diundi (%d puzzle)" % [cid, c["bank_materi"], pb.size()])
+				continue
+			if c.has("bank_materi"):
+				ok(t == "mcq", "%s: soal bank adalah pilihan ganda" % cid)
+				var bank := Content.bank_of(str(c["bank_materi"]))
+				ok(bank.size() == Content.BANK_PER_MATERI, "%s: bank materi %s siap diundi (%d soal)" % [cid, c["bank_materi"], bank.size()])
+				continue
 			if str(m.get("id", "")) in ["hutan", "pabrik", "candi", "danau"]:
-				ok(t != "mcq", "%s: map materi tidak memakai quiz pilihan ganda" % cid)
+				ok(t != "mcq", "%s: puzzle wilayah bukan quiz statis" % cid)
 				ok(c.has("lesson"), "%s: punya simulasi belajar sebelum puzzle" % cid)
 			match t:
 				"mcq":
@@ -374,9 +473,12 @@ func _decode(s: String, shift: int) -> String:
 
 func _kunci() -> void:
 	print("\n-- kelengkapan kunci tantangan --")
-	for m in Content.MAPS:
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw.get("id", "")))
 		for c in m.get("challenges", []):
 			var t := str(c.get("type", "mcq"))
+			if c.has("bank_materi"):
+				continue
 			match t:
 				"mcq":
 					ok(c.has("answer") and c.has("options"), "%s: mcq punya options+answer" % c["id"])

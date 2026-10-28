@@ -96,13 +96,13 @@ Permainan **tidak membuka dialog atau soal secara otomatis**. Pemain masuk ke pe
    - **Pedagang** menjual 5 barang: **Lensa Analisis** (20 uang, sekali pakai untuk membuka petunjuk) dan **4 komponen perangkat IoT** untuk Danau Citra (sensor pH air, papan rangkaian & kabel jumper, mikrokontroler ber-WiFi, sumber daya).
    - **Peneliti Lingkungan** memberi konteks cerita (danau tercemar).
      Map 1 **tidak memberi badge**; menyelesaikan kedua quest pengantar cukup untuk membuka Map 2.
-2. **Hutan Pengetahuan** (Map 2, Basis Data) — 3 misi puzzle: kunci tabel, relasi, dan SQL → **Badge Nature**.
-3. **Pabrik Limbah** (Map 3, Sistem Operasi) — 4 misi puzzle: keadaan proses, penjadwalan, dan resource bersama → **Badge Core**.
-4. **Candi Kuno** (Map 4, Kriptografi) — 5 misi puzzle: cipher, frekuensi, hash, dan pemilihan metode → **Badge Cipher**.
-5. **Danau Citra** (Map 5, Internet of Things) — 4 misi puzzle: komponen, diagnosis, perakitan, dan alur data; komponen perangkat **dibeli di toko Kota Unggul** → **Badge Aqua**.
+2. **Hutan Pengetahuan** (Map 2, Basis Data) — 3 misi puzzle: kunci tabel, relasi, dan SQL, ditambah **5 soal acak** dari bank Basis Data → **Badge Nature**.
+3. **Pabrik Limbah** (Map 3, Sistem Operasi) — 4 misi puzzle: keadaan proses, penjadwalan, dan resource bersama, ditambah **5 soal acak** dari bank Sistem Operasi → **Badge Core**.
+4. **Candi Kuno** (Map 4, Kriptografi) — 5 misi puzzle: cipher, frekuensi, hash, dan pemilihan metode, ditambah **5 soal acak** dari bank Kriptografi → **Badge Cipher**.
+5. **Danau Citra** (Map 5, Internet of Things) — 4 misi puzzle: komponen, diagnosis, perakitan, dan alur data, ditambah **5 soal acak** dari bank IoT; komponen perangkat **dibeli di toko Kota Unggul** → **Badge Aqua**.
 6. **The Source** (Map 6, final dungeon) — 4 ujian integrasi melawan **boss** (HP 4, berkurang tiap ujian lulus) → **post-test 20 soal + SUS 10 butir** → **keputusan akhir** pemain (segel sumber / susun ulang protokol) yang menentukan teks ending. Map 6 **tidak memberi badge**.
 
-Total **22 misi puzzle** dan **4 badge**. Setiap misi diawali NPC mentor dan simulasi belajar, lalu memberi **10 uang** ketika selesai. Tidak ada level maupun XP: satu-satunya kunci akses adalah badge.
+Total **22 misi puzzle + 20 soal bank acak (42 tantangan)** dan **4 badge**. Setiap misi diawali NPC mentor dan simulasi belajar, lalu memberi **10 uang** ketika selesai. Tidak ada level maupun XP: satu-satunya kunci akses adalah badge.
 
 **Audio:** musik latar diputar per wilayah (`bgm_final` di The Source, `bgm_explore` di lima wilayah lain) plus efek klik/benar/salah/koin/badge/portal; tombol **Suara** di HUD mematikan/menyalakannya. Berkas WAV disintesis oleh `tools/gen_audio.py` (tanpa aset pihak ketiga).
 
@@ -130,7 +130,7 @@ panel soal/dialog terbuka — jadi pemain tidak perlu menebak ke mana harus berj
 Rancangan penelitian adalah **one-group posttest-only** (Bab III 3.1), sehingga **tidak ada pre-test**. Ringkasan kesesuaian prototipe dengan draf dokumen terbaru (butir per butir Bab I–III) ada di `DOKUMENTASI_PROTOTIPE.md` §11. Instrumen dibuka otomatis setelah pemain menuntaskan Map 6, atau lewat menu **Mode Riset → Buka asesmen**:
 
 1. **Kode peserta** — diisi di awal (mis. `P01`); dipakai untuk mencocokkan data.
-2. **Post-test** — **20 soal pilihan ganda**, 5 soal tiap materi (Basis Data, Sistem Operasi, Kriptografi, IoT), satu halaman per butir. Nilai = benar/20 × 100, batas tuntas **70** (Bab III 3.11).
+2. **Post-test** — **20 soal pilihan ganda** yang **diundi dari bank 200 soal** (5 soal tiap materi: Basis Data, Sistem Operasi, Kriptografi, IoT), satu halaman per butir. Undian disimpan per kode peserta, jadi soal tidak berubah saat sesi diulang. Nilai = benar/20 × 100, batas tuntas **70** (Bab III 3.11).
 3. **SUS** — **10 pernyataan** skala 1–5 dengan pola ganjil/genap, skor 0–100, dibandingkan dengan acuan **68,0** (Hyzy dkk., 2022).
 4. **Ringkasan** — nilai post-test, rincian benar per materi, skor SUS, dan status tuntas.
 
@@ -145,7 +145,8 @@ Data disimpan di `user://records_terra.json` dan dapat diekspor ke CSV untuk dio
 ```
 project.godot            konfigurasi proyek (1280x720, autoload Game)
 scenes/Main.tscn         scene tunggal, seluruh UI dibangun dari skrip
-data/content.gd          6 peta, 22 misi puzzle, dialog NPC, 20 soal post-test, 10 butir SUS
+data/content.gd          6 peta, 22 misi puzzle, konfigurasi bank soal, alur cerita, 10 butir SUS
+data/question_bank.gd    200 soal (50 per materi) hasil generator tools/gen_bank.py
 scripts/game_state.gd    autoload: badge, progres, simpan/muat, penilaian post-test & SUS, rekap
 scripts/main.gd          orkestrator layar + input + transisi
 scripts/player.gd        CharacterBody2D + AnimatedSprite2D 4 arah
