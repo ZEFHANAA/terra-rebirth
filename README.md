@@ -1,8 +1,8 @@
-# Terra Rebirth — Prototipe Game RPG Edukasi (Godot 4)
+# Terra Rebirth — Game RPG Edukasi (Godot 4)
 
-Prototipe permainan RPG edukasi untuk penelitian **"Pengembangan dan Evaluasi Game RPG Edukasi Terra Rebirth sebagai Media Pembelajaran Konsep Informatika"** (Kelompok 1, Program Studi Informatika).
+Permainan RPG edukasi untuk penelitian **"Pengembangan dan Evaluasi Game RPG Edukasi Terra Rebirth sebagai Media Pembelajaran Konsep Informatika"** (Kelompok 1, Program Studi Informatika).
 
-Dibangun dengan **Godot 4.7 + GDScript**. Seluruh aset dibuat khusus untuk proyek ini — tidak ada aset pihak ketiga berlisensi, sehingga aman untuk laporan.
+Dibangun dengan **Godot 4.7 + GDScript**. Enam wilayah dapat dimainkan penuh dari layar judul sampai keputusan akhir (build v0.7). Seluruh aset dibuat khusus untuk proyek ini — tidak ada aset pihak ketiga berlisensi, sehingga aman untuk laporan.
 
 ## Main langsung di browser
 
@@ -22,9 +22,17 @@ Untuk mencoba versi terbaru dari kode sumber, lihat bagian [Cara menjalankan](#1
 | ----------------------------------- | ------------------------------- |
 | ![Eksplorasi](dokumentasi/play.png) | ![Kuis](dokumentasi/puzzle.png) |
 
-| Peta wilayah                 | Instrumen riset (SUS)              |
-| ---------------------------- | ---------------------------------- |
-| ![Peta](dokumentasi/map.png) | ![Riset](dokumentasi/research.png) |
+| Peta wilayah                 | Layar jeda + pengaturan + kontrol |
+| ---------------------------- | --------------------------------- |
+| ![Peta](dokumentasi/map.png) | ![Jeda](dokumentasi/pause.png)    |
+
+| Jurnal misi                          | Koleksi badge                      |
+| ------------------------------------ | ---------------------------------- |
+| ![Jurnal](dokumentasi/journal.png)   | ![Badge](dokumentasi/badges.png)   |
+
+| Mode Riset: rekap + ringkasan rata-rata |
+| --------------------------------------- |
+| ![Riset](dokumentasi/research.png)      |
 
 Demo versi terkini (57 detik, musik, jalan kaki tanpa teleport): [`dokumentasi/gameplay-terbaru.mp4`](dokumentasi/gameplay-terbaru.mp4)
 
@@ -76,13 +84,17 @@ Xvfb :99 -screen 0 1280x720x24 &
 
 ## 2. Kontrol
 
-| Tombol            | Fungsi                                                  |
-| ----------------- | ------------------------------------------------------- |
-| `W A S D` / panah | Berjalan                                                |
-| `E`               | Bicara dengan NPC, lanjut dialog, berinteraksi          |
-| `M`               | Buka peta wilayah                                       |
-| `Esc`             | Menu / tutup panel                                      |
-| Klik mouse        | Memilih jawaban, menyusun query, menggeser cakram sandi |
+| Tombol            | Fungsi                                                       |
+| ----------------- | ------------------------------------------------------------ |
+| `W A S D` / panah | Berjalan                                                     |
+| `E`               | Bicara dengan NPC, lanjut dialog, berinteraksi               |
+| `J`               | Buka jurnal misi (daftar tantangan + tombol Tandai)          |
+| `M`               | Buka peta wilayah                                            |
+| `Esc`             | Layar jeda (pengaturan + kontrol), atau menutup panel        |
+| Klik mouse        | Memilih jawaban, menyusun query, menggeser cakram sandi      |
+| `Ctrl` + `R`      | Buka Mode Riset (rekap peserta) — untuk pengambilan data      |
+
+Daftar tombol yang sama juga tertulis di layar jeda, jadi bisa dibuka kapan saja saat lupa.
 
 ---
 
@@ -96,30 +108,41 @@ Permainan **tidak membuka dialog atau soal secara otomatis**. Pemain masuk ke pe
    - **Pedagang** menjual 5 barang: **Lensa Analisis** (20 uang, sekali pakai untuk membuka petunjuk) dan **4 komponen perangkat IoT** untuk Danau Citra (sensor pH air, papan rangkaian & kabel jumper, mikrokontroler ber-WiFi, sumber daya).
    - **Peneliti Lingkungan** memberi konteks cerita (danau tercemar).
      Map 1 **tidak memberi badge**; menyelesaikan kedua quest pengantar cukup untuk membuka Map 2.
-2. **Hutan Pengetahuan** (Map 2, Basis Data) — 3 misi puzzle: kunci tabel, relasi, dan SQL → **Badge Nature**.
-3. **Pabrik Limbah** (Map 3, Sistem Operasi) — 4 misi puzzle: keadaan proses, penjadwalan, dan resource bersama → **Badge Core**.
-4. **Candi Kuno** (Map 4, Kriptografi) — 5 misi puzzle: cipher, frekuensi, hash, dan pemilihan metode → **Badge Cipher**.
-5. **Danau Citra** (Map 5, Internet of Things) — 4 misi puzzle: komponen, diagnosis, perakitan, dan alur data; komponen perangkat **dibeli di toko Kota Unggul** → **Badge Aqua**.
+2. **Hutan Pengetahuan** (Map 2, Basis Data) — 10 tantangan: 3 misi puzzle, 2 puzzle acak dari bank, dan **5 soal acak** dari bank Basis Data → **Badge Nature**.
+3. **Pabrik Limbah** (Map 3, Sistem Operasi) — 11 tantangan: 4 misi puzzle, 2 puzzle acak, dan **5 soal acak** dari bank Sistem Operasi → **Badge Core**.
+4. **Candi Kuno** (Map 4, Kriptografi) — 12 tantangan: 5 misi puzzle, 2 puzzle acak, dan **5 soal acak** dari bank Kriptografi → **Badge Cipher**.
+5. **Danau Citra** (Map 5, Internet of Things) — 11 tantangan: 4 misi puzzle, 2 puzzle acak, dan **5 soal acak** dari bank IoT; komponen perangkat **dibeli di toko Kota Unggul** → **Badge Aqua**.
 6. **The Source** (Map 6, final dungeon) — 4 ujian integrasi melawan **boss** (HP 4, berkurang tiap ujian lulus) → **post-test 20 soal + SUS 10 butir** → **keputusan akhir** pemain (segel sumber / susun ulang protokol) yang menentukan teks ending. Map 6 **tidak memberi badge**.
 
-Total **22 misi puzzle** dan **4 badge**. Setiap misi diawali NPC mentor dan simulasi belajar, lalu memberi **10 uang** ketika selesai. Tidak ada level maupun XP: satu-satunya kunci akses adalah badge.
+Total **50 tantangan** (Kota 2, Hutan 10, Pabrik 11, Candi 12, Danau 11, The Source 4) dan **4 badge**. Setiap misi diawali NPC mentor dan simulasi belajar, lalu memberi **10 uang** ketika selesai. Tidak ada level maupun XP: satu-satunya kunci akses adalah badge.
 
-**Audio:** musik latar diputar per wilayah (`bgm_final` di The Source, `bgm_explore` di lima wilayah lain) plus efek klik/benar/salah/koin/badge/portal; tombol **Suara** di HUD mematikan/menyalakannya. Berkas WAV disintesis oleh `tools/gen_audio.py` (tanpa aset pihak ketiga).
+**Soal dan puzzle diundi, bukan dihafal.** Bank soal berisi **200 soal** (50 per materi) dan bank puzzle berisi **40 puzzle** (10 per materi; 20 tipe `order`, 20 tipe `fill`). Setiap kali wilayah dimuat, 5 soal dan 2 puzzle diambil acak dari bank, jadi pemain yang mengulang wilayah tidak menerima soal yang sama.
+
+**Nyawa per wilayah.** Setiap wilayah punya **3 nyawa**. Jawaban kuis salah mengurangi 1 nyawa; puzzle yang gagal langsung menghabiskan sesi (fatal). Nyawa habis → wilayah itu **diulang dari awal**, tetapi **uang, barang yang sudah dibeli, komponen, dan badge tetap disimpan** — hukuman tidak pernah mengunci progres.
+
+**Audio:** musik latar diputar per wilayah (`bgm_final` di The Source, `bgm_explore` di lima wilayah lain) plus efek klik/benar/salah/koin/badge/portal. Volume musik, volume efek suara, dan kecepatan teks diatur lewat **penggeser di layar jeda** (bisa juga dibuka dari layar judul lewat tombol **Pengaturan**); ujung kiri penggeser bertanda **Mati** dan benar-benar membisukan suara. Setelan disimpan di `user://settings_terra.json`, terpisah dari simpanan permainan. Berkas WAV disintesis oleh `tools/gen_audio.py` (tanpa aset pihak ketiga).
 
 **Penunjuk arah (HUD):** panah kuning di tepi layar menunjuk objek/NPC terdekat yang belum selesai,
 lengkap dengan nama dan jarak dalam meter (1 petak = 1 m). Panah hilang bila jarak < 3 petak atau saat
 panel soal/dialog terbuka — jadi pemain tidak perlu menebak ke mana harus berjalan di peta 40×22.
+
+**Jurnal misi (`J`):** enam wilayah di kolom kiri dengan progres dan badge, daftar tantangan di kolom kanan beserta **pemicu**-nya (nama benda atau NPC yang harus ditemui). Tombol **Tandai** memasang belah ketupat emas berdenyut di atas sasaran itu di peta, dan panah HUD ikut menunjuk ke sana sampai pemain mendekat.
+
+**Koleksi badge:** angka badge di HUD (`0 / 4 ›`) bisa diklik dan membuka empat kartu berisi ikon, asal wilayah, jumlah tantangan, syarat, dan status didapat/belum.
+
+**Layar jeda (`Esc`):** tiga penggeser setelan, daftar kontrol, tombol **Lanjutkan**, **Jurnal Misi**, **Ulangi Wilayah Ini** (mengulang wilayah tanpa menghapus uang/barang/badge), dan **Kembali ke Menu Utama**.
 
 **Aturan gating (Bab II 2.5, Tabel 2.5):**
 
 - Badge **hanya** diberikan setelah **seluruh** quest pada suatu map selesai, termasuk tantangan akhir — bukan setiap jawaban benar.
 - Map berikutnya terbuka **hanya bila badge map sebelumnya sudah dimiliki**. Tidak ada syarat level.
 
-**Lima tipe tantangan:**
+**Enam tipe tantangan:**
 
-- `mcq` — pilihan ganda konsep (dipakai di tutorial dan final).
+- `mcq` — pilihan ganda konsep (tutorial, soal bank, dan final).
 - `build` — menyusun query SQL lewat dropdown (SELECT / FROM / JOIN / WHERE / ORDER BY).
 - `order` — menyusun urutan langkah (penjadwalan proses, alur data IoT).
+- `fill` — mengisi bagian kosong (istilah atau potongan kode) lewat pilihan yang disediakan.
 - `cipher` — memutar cakram Caesar untuk membaca pesan.
 - `craft` — membeli 4 komponen di toko Kota Unggul lalu merakit perangkat IoT (Danau Citra).
 
@@ -127,14 +150,19 @@ panel soal/dialog terbuka — jadi pemain tidak perlu menebak ke mana harus berj
 
 ## 4. Asesmen (instrumen penelitian)
 
-Rancangan penelitian adalah **one-group posttest-only** (Bab III 3.1), sehingga **tidak ada pre-test**. Ringkasan kesesuaian prototipe dengan draf dokumen terbaru (butir per butir Bab I–III) ada di `DOKUMENTASI_PROTOTIPE.md` §11. Instrumen dibuka otomatis setelah pemain menuntaskan Map 6, atau lewat menu **Mode Riset → Buka asesmen**:
+Rancangan penelitian adalah **one-group posttest-only** (Bab III 3.1), sehingga **tidak ada pre-test**. Ringkasan kesesuaian prototipe dengan draf dokumen terbaru (butir per butir Bab I–III) ada di `DOKUMENTASI_PROTOTIPE.md` §11. Instrumen dibuka otomatis setelah pemain menuntaskan Map 6, atau lewat **Mode Riset → Buka asesmen**:
 
 1. **Kode peserta** — diisi di awal (mis. `P01`); dipakai untuk mencocokkan data.
-2. **Post-test** — **20 soal pilihan ganda**, 5 soal tiap materi (Basis Data, Sistem Operasi, Kriptografi, IoT), satu halaman per butir. Nilai = benar/20 × 100, batas tuntas **70** (Bab III 3.11).
+2. **Post-test** — **20 soal pilihan ganda** yang **diundi dari bank 200 soal** (5 soal tiap materi: Basis Data, Sistem Operasi, Kriptografi, IoT), satu halaman per butir. Undian disimpan per kode peserta, jadi soal tidak berubah saat sesi diulang. Nilai = benar/20 × 100, batas tuntas **70** (Bab III 3.11).
 3. **SUS** — **10 pernyataan** skala 1–5 dengan pola ganjil/genap, skor 0–100, dibandingkan dengan acuan **68,0** (Hyzy dkk., 2022).
 4. **Ringkasan** — nilai post-test, rincian benar per materi, skor SUS, dan status tuntas.
 
-Menu **Mode Riset** menampilkan rekap seluruh peserta (kode, tanggal, durasi bermain, nilai post-test, benar per materi, status tuntas, skor SUS) dan tombol **Ekspor CSV**, serta catatan rancangan pengujian: **target 30 responden purposive sampling** (Bab III 3.8) dan **durasi sesi 60 menit** untuk Map 1 sampai post-test (Bab III 3.10).
+**Mode Riset** (buka dengan `Ctrl` + `R` dari layar judul atau layar Peta Wilayah; sengaja tidak dipasang sebagai tombol menu karena ini alat pengambilan data, bukan fitur pemain) menampilkan:
+
+- **Ringkasan agregat** di atas tabel: jumlah peserta, rata-rata post-test, ketuntasan (n/N dan persen), rata-rata SUS (hanya dari peserta yang mengisi), rata-rata durasi, dan rata-rata benar per materi.
+- **Rekap per peserta**: kode, tanggal, durasi bermain, nilai post-test, benar per materi, status tuntas, skor SUS.
+- Tombol **Buka asesmen** dan **Ekspor CSV**.
+- Catatan rancangan pengujian: **target 30 responden purposive sampling** (Bab III 3.8) dan **durasi sesi 60 menit** untuk Map 1 sampai post-test (Bab III 3.10).
 
 Data disimpan di `user://records_terra.json` dan dapat diekspor ke CSV untuk diolah di Excel/SPSS.
 
@@ -145,16 +173,18 @@ Data disimpan di `user://records_terra.json` dan dapat diekspor ke CSV untuk dio
 ```
 project.godot            konfigurasi proyek (1280x720, autoload Game)
 scenes/Main.tscn         scene tunggal, seluruh UI dibangun dari skrip
-data/content.gd          6 peta, 22 misi puzzle, dialog NPC, 20 soal post-test, 10 butir SUS
-scripts/game_state.gd    autoload: badge, progres, simpan/muat, penilaian post-test & SUS, rekap
+data/content.gd          6 peta, 22 misi puzzle, konfigurasi bank soal, alur cerita, 10 butir SUS
+data/question_bank.gd    200 soal (50 per materi) hasil generator tools/gen_bank.py
+data/puzzle_bank.gd      40 puzzle acak (10 per materi: order & fill)
+scripts/game_state.gd    autoload: badge, progres, nyawa, simpan/muat, setelan, penilaian post-test & SUS, rekap
 scripts/main.gd          orkestrator layar + input + transisi
 scripts/player.gd        CharacterBody2D + AnimatedSprite2D 4 arah
-scripts/world.gd         membangun peta (collision, 4 NPC, objek pencarian, portal)
+scripts/world.gd         membangun peta (collision, 4 NPC, objek pencarian, portal, penanda tujuan)
 scripts/portal.gd        gerbang antar wilayah (terkunci/terbuka)
-scripts/ui/              ui_kit, hud, dialog_box, puzzle_panel, badge_popup, shop_panel, asesmen
-scripts/screens/         title, map_select, research, ending
-scripts/autotest.gd      uji integrasi otomatis (109 cek)
-scripts/audit_konten.gd  audit isi konten: kunci jawaban, polaritas SUS, sandi, keterjangkauan peta, rujukan silang, toko & komponen (437 cek)
+scripts/ui/              ui_kit, hud, dialog_box, puzzle_panel, badge_popup, shop_panel, asesmen, pause_menu
+scripts/screens/         title, map_select, research, journal, badges, ending
+scripts/autotest.gd      uji integrasi otomatis (248 cek)
+scripts/audit_konten.gd  audit isi konten: kunci jawaban, polaritas SUS, sandi, keterjangkauan peta, pemicu quest, toko & komponen (1512 cek)
 tools/assets_gen.py      generator sprite, NPC, badge, panel, latar judul
 tools/maps_gen.py        generator 6 peta (Kota 60x36, lainnya 40x22) + JSON collision
 tools/gen_audio.py       sintesis WAV: 2 musik latar + 6 efek suara (tanpa aset pihak ketiga)
@@ -169,12 +199,13 @@ build/web/               hasil ekspor web (siap disajikan lewat server lokal)
 ## 6. Uji otomatis
 
 ```bash
-godot --headless --path . res://scenes/AutoTest.tscn        # alur permainan + asesmen (109 cek)
-godot --headless --script res://scripts/audit_konten.gd     # audit isi konten (437 cek)
+godot --headless --path . res://scenes/AutoTest.tscn        # alur permainan + asesmen + UI (248 cek)
+godot --headless --script res://scripts/audit_konten.gd     # audit isi konten (1512 cek)
 ```
 
-Menguji: eksplorasi objek → NPC mentor + simulasi → puzzle (build/order/cipher/craft) → aturan badge (satu quest belum memberi badge) → gating antar-map → uang & toko → boss → post-test & SUS (skor, rekaman, CSV) → keputusan ending → simpan/muat → kasus batas (batal asesmen, post-test tanpa SUS, kode peserta ganda, durasi lintas sesi).
-Hasil terakhir: **109 cek, 0 gagal**; audit konten **437 cek, 0 gagal**.
+Menguji: eksplorasi objek → NPC mentor + simulasi → puzzle (build/order/fill/cipher/craft) → aturan badge (satu quest belum memberi badge) → gating antar-map → nyawa & pengulangan wilayah → uang & toko → boss → post-test & SUS (skor, rekaman, CSV) → ringkasan agregat Mode Riset → keputusan ending → simpan/muat & setelan → jurnal, penanda tujuan, koleksi badge, layar jeda → kasus batas (batal asesmen, post-test tanpa SUS, kode peserta ganda, durasi lintas sesi, quest tanpa pemicu).
+
+Hasil terakhir: **248 cek, 0 gagal**; audit konten **1512 cek, 0 gagal**.
 
 ---
 
@@ -188,6 +219,13 @@ Hasil terakhir: **109 cek, 0 gagal**; audit konten **437 cek, 0 gagal**.
 
 Rekam ulang: `./tools/rekam.sh /tmp/out.mp4 445 full` (demo: `rekam`, `terbaru`, `tour`, `full`; untuk potret/dialog satu NPC: `TERRA_MAP=pabrik ./tools/shot.sh npc out.png 7 pabrik`).
 Demo `full` memainkan seluruh permainan sendiri: berjalan ke NPC/objek, menyelesaikan misi puzzle, mengisi post-test dan SUS, lalu memilih keputusan akhir — berguna untuk merekam video tanpa operator.
+
+Tangkapan layar statis bisa dibuat tanpa operator, misalnya:
+
+```bash
+TERRA_DEMO=pause TERRA_SHOT=/tmp/pause.png TERRA_SHOT_DELAY=3 godot --path .
+# demo yang tersedia: title, pause, journal, mark, badges, settings, riset, research, ...
+```
 
 ## 6c. Karakter
 

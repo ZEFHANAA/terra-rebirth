@@ -10,6 +10,8 @@ var _c: Dictionary = {}
 var _index := 0
 var _total := 0
 var _done := false
+var _failed := false
+var _lives_suffix := ""
 var _attempts := 0
 
 var _root: VBoxContainer
@@ -36,15 +38,21 @@ var _cipher_label: Label
 var _pool_box: VBoxContainer
 var _answer_box: VBoxContainer
 var _lesson_done := false
+var _fill_edit: LineEdit
+var _hearts: Array = []
+var _dim: ColorRect
+var _panel: PanelContainer
+var _band: PanelContainer
+var _paper: PanelContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
 
-	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.03, 0.06, 0.84)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(dim)
+	_dim = ColorRect.new()
+	_dim.color = UiKit.theme_dim()
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_dim)
 
 	# Panel mengisi tinggi layar dengan margin tetap, supaya isi yang panjang
 	# bisa di-scroll dan tombol aksi tidak pernah keluar layar.
@@ -56,17 +64,20 @@ func _ready() -> void:
 	frame.add_theme_constant_override("margin_bottom", 30)
 	add_child(frame)
 
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UiKit.screen_style())
-	panel.custom_minimum_size = Vector2(WIDTH, 0)
-	frame.add_child(panel)
+	_panel = PanelContainer.new()
+	_panel.add_theme_stylebox_override("panel", UiKit.screen_style())
+	_panel.custom_minimum_size = Vector2(WIDTH, 0)
+	frame.add_child(_panel)
 
 	_root = UiKit.vbox(14)
-	panel.add_child(_root)
+	_panel.add_child(_root)
 
 	# ---------------------------------------------------------- kepala panel
+	_band = PanelContainer.new()
+	_band.add_theme_stylebox_override("panel", UiKit.ribbon_style())
+	_root.add_child(_band)
 	var head := UiKit.hbox(10)
-	_root.add_child(head)
+	_band.add_child(head)
 
 	_map_chip = UiKit.chip("KOTA UNGGUL", UiKit.GOLD, Color(0.91, 0.72, 0.35, 0.10))
 	head.add_child(_map_chip)
@@ -84,6 +95,19 @@ func _ready() -> void:
 	_boss_hp = UiKit.label("HP 3 / 3", 14, UiKit.DANGER)
 	_boss_row.add_child(_boss_hp)
 
+	# Nyawa wilayah tampil sebagai hati kayu di kepala panel.
+	var hearts_row := UiKit.hbox(2)
+	hearts_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_child(hearts_row)
+	for i in range(Content.LIVES_PER_MAP):
+		var h := TextureRect.new()
+		h.custom_minimum_size = Vector2(26, 22)
+		h.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		h.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hearts_row.add_child(h)
+		_hearts.append(h)
+
 	_lensa_btn = UiKit.button("Lensa (0)", 14, UiKit.GOLD)
 	_lensa_btn.tooltip_text = "Membuka petunjuk. Dibeli dari pedagang di Kota Unggul."
 	_lensa_btn.custom_minimum_size = Vector2(120, 40)
@@ -99,11 +123,12 @@ func _ready() -> void:
 	_root.add_child(UiKit.rule())
 
 	# ---------------------------------------------------------- judul & soal
-	_title = UiKit.title("", 17, UiKit.GOLD)
+	_title = UiKit.title("", 16, UiKit.GOLD)
 	_root.add_child(_title)
 
-	_prompt = UiKit.body("", 19, UiKit.TEXT, WIDTH - 96)
-	_root.add_child(UiKit.card(_prompt, UiKit.GOLD))
+	_prompt = UiKit.body("", 20, UiKit.theme_ink(), WIDTH - 210)
+	_paper = UiKit.paper_card(_prompt)
+	_root.add_child(_paper)
 
 	_body_scroll = ScrollContainer.new()
 	_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -125,16 +150,23 @@ func _ready() -> void:
 	_root.add_child(_action_row)
 
 func open(challenge: Dictionary, index: int, total: int) -> void:
+	# Tema mengikuti wilayah yang sedang dimainkan: pabrik tampil seperti besi,
+	# candi seperti batu, danau seperti kayu apung, The Source seperti obsidian.
+	UiKit.set_theme(Game.current_map)
+	_apply_theme()
 	_c = challenge
 	_index = index
 	_total = total
 	_done = false
+	_failed = false
 	_attempts = 0
 	_parts_select.clear()
 	_order_answer.clear()
 	_order_pool.clear()
 	_cipher_shift = 0
-	_lesson_done = not _c.has("lesson")
+	# Materi pembelajaran hanya diberikan lewat dialog NPC pengajar, jadi panel
+	# tantangan langsung menampilkan soal tanpa layar pelajaran.
+	_lesson_done = true
 	_feedback.visible = false
 	_feedback.text = ""
 	for ch in _action_row.get_children():
@@ -143,6 +175,7 @@ func open(challenge: Dictionary, index: int, total: int) -> void:
 		ch.queue_free()
 
 	_refresh_lensa()
+	_refresh_hearts()
 	if _c.has("boss_hp"):
 		_boss_row.visible = true
 		_boss_name.text = str(_c.get("boss_name", "BOSS")).to_upper()
@@ -165,7 +198,59 @@ func open(challenge: Dictionary, index: int, total: int) -> void:
 		_build_lesson()
 	visible = true
 
+## Terapkan bahan & warna wilayah ke panel, pita kepala, kertas soal, dan judul.
+func _apply_theme() -> void:
+	if _dim:
+		_dim.color = UiKit.theme_dim()
+	if _panel:
+		_panel.add_theme_stylebox_override("panel", UiKit.screen_style())
+	if _band:
+		_band.add_theme_stylebox_override("panel", UiKit.ribbon_style())
+	if _paper:
+		_paper.add_theme_stylebox_override("panel", UiKit.parchment_style(22, 16))
+	if _prompt:
+		_prompt.add_theme_color_override("font_color", UiKit.theme_ink())
+	if _title:
+		_title.add_theme_color_override("font_color", UiKit.theme_accent())
+	if _feedback:
+		_feedback.add_theme_color_override("font_color", UiKit.theme_accent())
+	if _map_chip and _map_chip.get_child_count() > 0:
+		var chip_lbl := _map_chip.get_child(0) as Label
+		if chip_lbl:
+			chip_lbl.add_theme_color_override("font_color", UiKit.theme_accent())
+
 func _build_active_challenge() -> void:
+	if _c.has("bank_materi"):
+		var q := Game.bank_question(str(_c.get("id", "")), str(_c["bank_materi"]))
+		if q.is_empty():
+			_show_feedback("Bank soal belum tersedia untuk materi ini.", UiKit.DANGER)
+			return
+		# id tantangan tetap stabil agar progres save tidak berubah.
+		_c["prompt"] = str(q.get("prompt", ""))
+		_c["options"] = q.get("options", [])
+		_c["answer"] = int(q.get("answer", 0))
+		_c["explain"] = str(q.get("explain", ""))
+		_c["bank_id"] = str(q.get("id", ""))
+		_title.text = str(_c.get("bank_materi", "Uji Materi")).to_upper()
+		_prompt.text = str(_c.get("prompt", ""))
+	if _c.has("puzzle_bank"):
+		var pz := Game.bank_puzzle(str(_c.get("id", "")), str(_c["bank_materi"]))
+		if pz.is_empty():
+			_show_feedback("Bank puzzle belum tersedia untuk materi ini.", UiKit.DANGER)
+			return
+		_c["puzzle_id"] = str(pz.get("id", ""))
+		_c["prompt"] = str(pz.get("prompt", ""))
+		_c["explain"] = str(pz.get("explain", ""))
+		_c["fatal"] = true
+		_title.text = "PUZZLE " + str(_c.get("bank_materi", "")).to_upper()
+		_prompt.text = str(_c.get("prompt", ""))
+		if str(pz.get("type", "order")) == "fill":
+			_c["type"] = "fill"
+			_c["code"] = str(pz.get("code", ""))
+			_c["accept"] = pz.get("accept", [])
+		else:
+			_c["type"] = "order"
+			_c["items"] = pz.get("steps", [])
 	if _c.has("table"):
 		_body.add_child(_make_table(_c["table"]))
 
@@ -180,6 +265,8 @@ func _build_active_challenge() -> void:
 			_build_craft()
 		"cipher":
 			_build_cipher()
+		"fill":
+			_build_fill()
 
 func _build_lesson() -> void:
 	var lesson: Dictionary = _c.get("lesson", {})
@@ -205,6 +292,7 @@ func _on_lesson_answer(index: int, btn: Button) -> void:
 	if index != int(lesson.get("answer", -1)):
 		btn.disabled = true
 		_attempts += 1
+		_register_mistake()
 		_show_feedback(str(lesson.get("wrong", "Belum tepat. Coba pahami kembali simulasi.")), UiKit.DANGER)
 		return
 	_lesson_done = true
@@ -295,6 +383,7 @@ func _on_craft_check() -> void:
 	for i in range(slots.size()):
 		if str(_craft_slots[i]) != str(slots[i]):
 			_attempts += 1
+			_register_mistake()
 			_show_feedback("Belum tepat. Perangkat harus mengikuti aliran data: masukan → pengolahan → pengiriman → perantara.", UiKit.DANGER)
 			if _attempts >= 2:
 				_show_hint()
@@ -321,11 +410,11 @@ func _make_table(data: Dictionary) -> Control:
 func _build_mcq() -> void:
 	var opts: Array = _c.get("options", [])
 	for i in range(opts.size()):
-		var b := UiKit.button("", 17)
+		var b := UiKit.choice_button("", 17)
 		b.text = "   %s      %s" % [char(65 + i), str(opts[i])]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.custom_minimum_size = Vector2(WIDTH - 96, 50)
+		b.custom_minimum_size = Vector2(WIDTH - 110, 56)
 		b.pressed.connect(_on_mcq.bind(i, b))
 		_body.add_child(b)
 
@@ -333,13 +422,17 @@ func _on_mcq(idx: int, btn: Button) -> void:
 	if _done:
 		return
 	if idx == int(_c.get("answer", -1)):
-		btn.add_theme_color_override("font_color", UiKit.ACCENT)
-		btn.add_theme_stylebox_override("normal", UiKit.panel_style(Color(0.08, 0.2, 0.16), UiKit.ACCENT, 8, 2))
+		btn.add_theme_color_override("font_color", Color("1f3d16"))
+		btn.add_theme_stylebox_override("normal", UiKit.panel_style(Color("cfe3a8"), UiKit.ACCENT, 3, 3, false))
 		_win()
 	else:
 		btn.disabled = true
-		btn.add_theme_color_override("font_color", UiKit.DANGER)
+		btn.text = "×   " + btn.text.strip_edges()
+		btn.add_theme_color_override("font_disabled_color", Color("7d5040"))
+		btn.add_theme_stylebox_override("disabled",
+			UiKit.panel_style(Color("cdbf9f"), Color("9a6a52"), 3, 2, false))
 		_attempts += 1
+		_register_mistake()
 		_show_feedback("Belum tepat. Periksa lagi hubungan antar konsepnya.", UiKit.DANGER)
 		if _attempts >= 2:
 			_show_hint()
@@ -416,6 +509,7 @@ func _on_sql_check() -> void:
 		_win()
 	else:
 		_attempts += 1
+		_register_mistake()
 		_show_feedback("Query belum menghasilkan keluaran yang diminta. Periksa klausa SELECT, JOIN, WHERE, dan ORDER BY.", UiKit.DANGER)
 		if _attempts >= 2:
 			var first_bad := ""
@@ -470,10 +564,10 @@ func _refresh_order() -> void:
 
 	for i in range(_order_pool.size()):
 		var idx := i
-		var b := UiKit.button("%s" % str(_order_pool[i]), 15)
+		var b := UiKit.choice_button("%s" % str(_order_pool[i]), 15)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.custom_minimum_size = Vector2(430, 40)
+		b.custom_minimum_size = Vector2(430, 46)
 		b.pressed.connect(func():
 			_order_answer.append(_order_pool[idx])
 			_order_pool.remove_at(idx)
@@ -487,10 +581,13 @@ func _refresh_order() -> void:
 
 	for i in range(_order_answer.size()):
 		var idx := i
-		var b := UiKit.button("%d.  %s" % [i + 1, str(_order_answer[i])], 15, UiKit.GOLD)
+		var b := UiKit.choice_button("%d.  %s" % [i + 1, str(_order_answer[i])], 15)
+		b.add_theme_stylebox_override("normal", UiKit.panel_style(Color("dcebc0"), Color("6f9a4a"), 3, 2, false))
+		b.add_theme_stylebox_override("hover", UiKit.panel_style(Color("e6f2cd"), UiKit.ACCENT, 3, 3, false))
+		b.add_theme_stylebox_override("pressed", UiKit.panel_style(Color("cfe0ab"), Color("6f9a4a"), 3, 2, false))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.custom_minimum_size = Vector2(430, 40)
+		b.custom_minimum_size = Vector2(430, 46)
 		b.pressed.connect(func():
 			_order_pool.append(_order_answer[idx])
 			_order_answer.remove_at(idx)
@@ -514,9 +611,72 @@ func _on_order_check() -> void:
 		_win()
 	else:
 		_attempts += 1
+		if bool(_c.get("fatal", false)):
+			_fatal_fail("Urutan salah. Puzzle gagal — nyawa wilayah habis.")
+			return
+		_register_mistake()
 		_show_feedback("Urutannya belum tepat. Ingat alur keadaan proses/sistem dari awal sampai akhir.", UiKit.DANGER)
 		if _attempts >= 2:
 			_show_feedback("Petunjuk: langkah pertama adalah “%s”." % str(items[0]), UiKit.GOLD)
+
+# ------------------------------------------------------------- isi rumpang
+func _build_fill() -> void:
+	var code := str(_c.get("code", ""))
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", UiKit.panel_style(Color("0f1d14"), Color("6f9a4a"), 3, 2, false))
+	_body.add_child(frame)
+	var l := UiKit.label(code, 19, Color("cfe8a8"), WIDTH - 140)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	frame.add_child(l)
+
+	_body.add_child(UiKit.label("Tulis isi bagian bertanda ___ :", 14, UiKit.MUTED))
+	_fill_edit = LineEdit.new()
+	_fill_edit.placeholder_text = "tulis jawabanmu di sini…"
+	_fill_edit.custom_minimum_size = Vector2(WIDTH - 96, 50)
+	var f := UiKit.body_font()
+	if f:
+		_fill_edit.add_theme_font_override("font", f)
+	_fill_edit.add_theme_font_size_override("font_size", 19)
+	_fill_edit.add_theme_color_override("font_color", UiKit.INK)
+	_fill_edit.add_theme_color_override("font_placeholder_color", Color("8a7a5c"))
+	_fill_edit.add_theme_color_override("caret_color", UiKit.INK)
+	_fill_edit.add_theme_color_override("selection_color", Color("b9cf92"))
+	_fill_edit.add_theme_stylebox_override("normal", UiKit.parchment_style(20, 12))
+	_fill_edit.add_theme_stylebox_override("focus", UiKit.parchment_style(20, 12))
+	_body.add_child(_fill_edit)
+
+	var check := UiKit.primary_button("Periksa Jawaban", UiKit.ACCENT, 17)
+	check.pressed.connect(_on_fill_check)
+	_action_row.add_child(check)
+	_fill_edit.grab_focus()
+
+func _on_fill_check() -> void:
+	if _done or _fill_edit == null:
+		return
+	var typed := _fill_edit.text.strip_edges().to_lower()
+	var accept: Array = _c.get("accept", [])
+	var ok := false
+	for a in accept:
+		if typed == str(a).strip_edges().to_lower():
+			ok = true
+			break
+	if ok:
+		_win()
+		return
+	_attempts += 1
+	if bool(_c.get("fatal", false)):
+		_fatal_fail("Jawaban salah. Puzzle gagal — nyawa wilayah habis.")
+		return
+	_register_mistake()
+	_show_feedback("Belum tepat. Periksa lagi bagian rumpangnya.", UiKit.DANGER)
+
+## Puzzle gagal tidak memotong satu nyawa: nyawa wilayah langsung habis,
+## progres direset, dan pemain dikembalikan ke Kota Unggul oleh main.gd.
+func _fatal_fail(msg: String) -> void:
+	Game.sfx("sfx_err")
+	_show_feedback(msg, UiKit.DANGER)
+	visible = false
+	Game.fail_puzzle(_map_id())
 
 # ------------------------------------------------------------------ caesar
 func _build_cipher() -> void:
@@ -587,14 +747,46 @@ func _on_cipher_check() -> void:
 		_win()
 	else:
 		_attempts += 1
+		_register_mistake()
 		_show_feedback("Pesan belum terbaca sebagai kata yang bermakna. Coba geser satu per satu.", UiKit.DANGER)
 
 # ------------------------------------------------------------------ hasil
+## Id wilayah diturunkan dari id tantangan ("hutan-b3" -> "hutan").
+func _map_id() -> String:
+	var cid := str(_c.get("id", ""))
+	if cid.contains("-"):
+		return cid.split("-")[0]
+	return Game.current_map
+
+## Mencatat jawaban salah ke aturan nyawa. Bila nyawa wilayah habis, panel
+## ditutup dan main.gd mengulang wilayah tersebut.
+func _register_mistake() -> void:
+	var left := Game.note_mistake(_map_id(), str(_c.get("id", "")))
+	_refresh_hearts()
+	if left <= 0:
+		visible = false
+		return
+	_lives_suffix = "   Nyawa wilayah %d/%d." % [left, Content.LIVES_PER_MAP]
+
+## Menyalakan/mematikan hati sesuai sisa nyawa wilayah.
+func _refresh_hearts() -> void:
+	if _hearts.is_empty():
+		return
+	var left := Game.lives_left(_map_id())
+	var full := load("res://assets/ui/heart_full.png")
+	var empty := load("res://assets/ui/heart_empty.png")
+	for i in range(_hearts.size()):
+		var h: TextureRect = _hearts[i]
+		h.texture = full if i < left else empty
+
 func _show_feedback(text: String, color: Color) -> void:
 	if color == UiKit.DANGER:
 		Game.sfx("sfx_err")
 	elif color == UiKit.GOLD:
 		Game.sfx("sfx_click", -11.0)
+	if _lives_suffix != "":
+		text += _lives_suffix
+		_lives_suffix = ""
 	_feedback.text = "   " + text
 	_feedback.add_theme_color_override("font_color", color)
 	_feedback.visible = true
@@ -616,6 +808,7 @@ func _win() -> void:
 	btn.grab_focus()
 
 func _on_close() -> void:
+	UiKit.set_theme("")
 	if _done:
 		visible = false
 		solved.emit(str(_c.get("id", "")))

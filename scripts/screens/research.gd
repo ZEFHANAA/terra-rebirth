@@ -15,6 +15,8 @@ const COL_W := [70, 150, 92, 52, 42, 42, 62, 42, 62, 54]
 var _grid: GridContainer
 var _info: Label
 var _status: Label
+var _sum: HBoxContainer
+var _sum_materi: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -50,6 +52,14 @@ func _ready() -> void:
 
 	_info = UiKit.label("", 14, UiKit.MUTED, 1120)
 	v.add_child(_info)
+
+	# Ringkasan angka yang biasanya ditanyakan saat sidang (rata-rata nilai,
+	# ketuntasan, SUS, durasi). Dihitung dari baris tabel di bawahnya, bukan
+	# data baru.
+	_sum = UiKit.hbox(8)
+	v.add_child(_sum)
+	_sum_materi = UiKit.label("", 13, UiKit.MUTED, 1120)
+	v.add_child(_sum_materi)
 
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.07, 0.1, 0.15, 1.0), UiKit.BORDER, 12, 2))
@@ -113,13 +123,87 @@ func _ready() -> void:
 	v.add_child(_status)
 	refresh()
 
+## Menghitung ringkasan dari daftar rekaman. Dipisah dari `refresh()` supaya
+## bisa diuji tanpa menyentuh berkas data peserta.
+## SUS hanya dirata-ratakan dari peserta yang mengisi (nilai < 0 = belum diisi),
+## karena menghitung yang kosong sebagai 0 akan menurunkan hasil secara palsu.
+static func ringkas(recs: Array) -> Dictionary:
+	var n := recs.size()
+	var hasil := {
+		"n": n, "post": 0.0, "tuntas": 0, "tuntas_pct": 0,
+		"sus": 0.0, "sus_n": 0, "durasi": 0.0,
+		"materi": {"Basis Data": 0.0, "Sistem Operasi": 0.0, "Kriptografi": 0.0, "Internet of Things": 0.0},
+	}
+	if n == 0:
+		return hasil
+	var post := 0.0
+	var sus := 0.0
+	var durasi := 0.0
+	for r in recs:
+		var rec := r as Dictionary
+		post += float(rec.get("post", 0))
+		durasi += float(rec.get("durasi_menit", 0.0))
+		if bool(rec.get("tuntas", false)):
+			hasil["tuntas"] = int(hasil["tuntas"]) + 1
+		var s := float(rec.get("sus", -1.0))
+		if s >= 0.0:
+			hasil["sus"] = float(hasil["sus"]) + s
+			hasil["sus_n"] = int(hasil["sus_n"]) + 1
+		var per := rec.get("materi", {}) as Dictionary
+		for k in (hasil["materi"] as Dictionary).keys():
+			hasil["materi"][k] = float(hasil["materi"][k]) + float(per.get(k, 0))
+	hasil["post"] = post / float(n)
+	hasil["durasi"] = durasi / float(n)
+	hasil["tuntas_pct"] = int(round(100.0 * float(hasil["tuntas"]) / float(n)))
+	if int(hasil["sus_n"]) > 0:
+		hasil["sus"] = float(hasil["sus"]) / float(hasil["sus_n"])
+	for k in (hasil["materi"] as Dictionary).keys():
+		hasil["materi"][k] = float(hasil["materi"][k]) / float(n)
+	return hasil
+
+## Satu kartu ringkasan: angka besar di atas, keterangan kecil di bawah.
+func _stat(judul: String, nilai: String, catatan := "") -> Control:
+	var box := UiKit.vbox(1)
+	box.custom_minimum_size.x = 214
+	box.add_child(UiKit.title(nilai, 19, UiKit.GOLD))
+	box.add_child(UiKit.kicker(judul.to_upper(), UiKit.MUTED, 9))
+	# Keterangan cakupan ditaruh di baris sendiri: kalau digabung ke judul,
+	# teksnya melebihi lebar kartu dan terpotong.
+	if catatan != "":
+		box.add_child(UiKit.label(catatan, 10, UiKit.MUTED, 188))
+	return UiKit.card(box)
+
+func _isi_ringkasan(recs: Array) -> void:
+	for c in _sum.get_children():
+		c.queue_free()
+	if recs.is_empty():
+		_sum.add_child(_stat("Peserta", "0"))
+		_sum.add_child(_stat("Rata-rata post-test", "—"))
+		_sum.add_child(_stat("Tuntas", "—"))
+		_sum.add_child(_stat("Rata-rata SUS", "—"))
+		_sum.add_child(_stat("Rata-rata durasi", "—"))
+		_sum_materi.text = ""
+		return
+	var s := ringkas(recs)
+	_sum.add_child(_stat("Peserta", str(int(s["n"]))))
+	_sum.add_child(_stat("Rata-rata post-test", "%.1f" % float(s["post"])))
+	_sum.add_child(_stat("Tuntas", "%d/%d (%d%%)" % [int(s["tuntas"]), int(s["n"]), int(s["tuntas_pct"])]))
+	var sus_n := int(s["sus_n"])
+	_sum.add_child(_stat("Rata-rata SUS", "—" if sus_n == 0 else "%.1f" % float(s["sus"]),
+		"belum ada yang mengisi" if sus_n == 0 else "%d dari %d peserta mengisi" % [sus_n, int(s["n"])]))
+	_sum.add_child(_stat("Rata-rata durasi", "%.0f mnt" % float(s["durasi"])))
+	var m := s["materi"] as Dictionary
+	_sum_materi.text = ("Rata-rata benar per materi (maks 5 soal)  —  Basis Data %.1f  ·  Sistem Operasi %.1f  ·  Kriptografi %.1f  ·  IoT %.1f"
+		% [float(m["Basis Data"]), float(m["Sistem Operasi"]), float(m["Kriptografi"]), float(m["Internet of Things"])])
+
 func refresh() -> void:
 	if _grid == null:
 		return
 	var recs := Game.read_records()
+	_isi_ringkasan(recs)
 	_info.text = "%d peserta tercatat  ·  berkas: %s  ·  instrumen: post-test %d soal, SUS %d butir, batas tuntas %d" % [
 		recs.size(), Game.record_path.get_file(),
-		Content.TEST_ITEMS.size(), Content.SUS_ITEMS.size(), Content.PASSING_SCORE]
+		Game.posttest_items().size(), Content.SUS_ITEMS.size(), Content.PASSING_SCORE]
 	for c in _grid.get_children():
 		c.queue_free()
 	if recs.is_empty():

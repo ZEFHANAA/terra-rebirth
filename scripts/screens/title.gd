@@ -5,6 +5,7 @@ signal new_game
 signal continue_game
 signal open_maps
 signal open_research
+signal open_settings
 
 var start_btn: Button
 
@@ -72,8 +73,7 @@ func _ready() -> void:
 
 	var tag_row := UiKit.hbox(10)
 	box.add_child(tag_row)
-	tag_row.add_child(UiKit.chip("PROTOTIPE GAME EDUKASI", UiKit.ACCENT, Color(0.31, 0.82, 0.65, 0.10)))
-	tag_row.add_child(UiKit.chip(VERSION_TAG, UiKit.MUTED, Color(1, 1, 1, 0.05)))
+	tag_row.add_child(UiKit.chip("GAME EDUKASI", UiKit.ACCENT, Color(0.31, 0.82, 0.65, 0.10)))
 
 	box.add_child(UiKit.spacer(6))
 	box.add_child(UiKit.title("TERRA", 52, Color.WHITE))
@@ -100,16 +100,19 @@ func _ready() -> void:
 	box.add_child(b2)
 
 	box.add_child(UiKit.spacer(4))
-	var row := UiKit.hbox(10)
-	box.add_child(row)
+	# Dulu "Peta Wilayah" berbagi baris dengan "Mode Riset". Sekarang sendirian,
+	# jadi dimasukkan langsung ke kolom supaya lebarnya sama dengan tombol lain.
 	var b3 := UiKit.button("Peta Wilayah", 15)
-	b3.custom_minimum_size = Vector2(165, 44)
+	b3.custom_minimum_size = Vector2(340, 44)
 	b3.pressed.connect(func(): open_maps.emit())
-	row.add_child(b3)
-	var b4 := UiKit.button("Mode Riset", 15, UiKit.BLUE)
-	b4.custom_minimum_size = Vector2(165, 44)
-	b4.pressed.connect(func(): open_research.emit())
-	row.add_child(b4)
+	box.add_child(b3)
+
+	# Pengaturan suara juga bisa dibuka sebelum bermain, supaya pemain tidak
+	# harus masuk ke peta dulu hanya untuk mengecilkan musik.
+	var b5 := UiKit.button("Pengaturan", 15, UiKit.MUTED)
+	b5.custom_minimum_size = Vector2(340, 44)
+	b5.pressed.connect(func(): open_settings.emit())
+	box.add_child(b5)
 
 	# ------------------------------------------------------------- pahlawan
 	var glow := TextureRect.new()
@@ -184,16 +187,10 @@ func _ready() -> void:
 		brow.add_child(ic)
 
 	# ------------------------------------------------------------- kaki layar
-	var foot := UiKit.label("Kelompok 1  ·  Program Studi Informatika  ·  Build prototipe %s" % VERSION_TAG, 13, UiKit.MUTED)
+	# Identitas kelompok dan daftar tombol tidak lagi ditulis di judul: judul
+	# tinggal judul, tombol, dan nomor versi kecil di pojok.
+	var foot := UiKit.label(VERSION_TAG, 12, Color(0.62, 0.70, 0.80, 0.55))
 	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	foot.offset_left = 104
-	foot.offset_top = -48
+	foot.offset_top = -44
 	add_child(foot)
-
-	var keys := UiKit.label("WASD  jalan     E  interaksi     M  peta     Esc  menu", 13, Color(0.62, 0.70, 0.80, 0.75))
-	keys.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	keys.offset_left = -560
-	keys.offset_top = -48
-	keys.offset_right = -104
-	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	add_child(keys)

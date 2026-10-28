@@ -12,7 +12,7 @@ Dokumen ini menjelaskan prototipe yang dibangun dan bagaimana ia menjawab poin-p
 | Jenis | RPG edukasi 2D top-down, single player |
 | Mesin | Godot 4.7 (GDScript), renderer Compatibility |
 | Resolusi | 1280×720, stretch `canvas_items` / aspect `keep` |
-| Durasi main | ± 25–40 menit untuk 25 tantangan |
+| Durasi main | ± 35–50 menit untuk 50 tantangan (22 inti + 8 puzzle bank + 20 soal bank) |
 | Materi | Basis Data, Sistem Operasi, Kriptografi, Internet of Things |
 | Platform | Web (WebAssembly), Windows/Linux (ekspor desktop) |
 | Instrumen | Post-test 20 soal + SUS 10 butir (one-group posttest-only), rekap otomatis + ekspor CSV |
@@ -22,24 +22,35 @@ Dokumen ini menjelaskan prototipe yang dibangun dan bagaimana ia menjawab poin-p
 | Wilayah | Bidang | Tantangan | Tipe |
 |---|---|---|---|
 | Kota Unggul (Map 1) | Tutorial & hub, tanpa badge | Aturan Perjalanan; Arti Sebuah Badge | mcq, mcq |
-| Hutan Pengetahuan (Map 2) | Basis Data → Badge Nature | Kunci Tabel; Relasi Satu ke Banyak; Menyusun Query; Memilih Jenis JOIN; Tantangan Akhir: Membaca Hasil | mcq, mcq, build (SQL), mcq, mcq |
-| Pabrik Limbah (Map 3) | Sistem Operasi → Badge Core | Keadaan Proses; Urutan Penjadwalan; Memilih Penjadwalan; Sumber Daya Bersama; Tantangan Akhir: Dampak Kesalahan | mcq, order, mcq, mcq, mcq |
-| Candi Kuno (Map 4) | Kriptografi → Badge Cipher | Mengenali Sandi; Memutar Cakram; Analisis Frekuensi; Tantangan Akhir: Memilih Metode | mcq, cipher, mcq, mcq |
-| Danau Citra (Map 5) | IoT → Badge Aqua | Memilih Komponen; Fungsi Daya dan Pengolahan; Merakit Perangkat; Alur Data ke Dasbor; Tantangan Akhir: Membaca Data Sensor | mcq, mcq, **craft**, order, mcq |
+| Hutan Pengetahuan (Map 2) | Basis Data → Badge Nature | Kunci Tabel; Relasi Satu ke Banyak; Menyusun Query | build (SQL), order, build (SQL) |
+| Pabrik Limbah (Map 3) | Sistem Operasi → Badge Core | Keadaan Proses; Urutan Penjadwalan; Memilih Penjadwalan; Sumber Daya Bersama | order, order, order, order |
+| Candi Kuno (Map 4) | Kriptografi → Badge Cipher | Mengenali Sandi; Memutar Cakram; Analisis Frekuensi; Memilih Metode; Jejak Hash | cipher, cipher, order, build, cipher |
+| Danau Citra (Map 5) | IoT → Badge Aqua | Memilih Komponen; Fungsi Daya dan Pengolahan; Merakit Perangkat; Alur Data ke Dasbor | craft, order, **craft**, order |
 | The Source (Map 6) | Integrasi 4 bidang, tanpa badge | Ujian Data; Ujian Sandi; Ujian Sistem; Ujian Perangkat | mcq (boss HP 4) |
+
+Wilayah materi (Map 2–Map 5) masing-masing menambah **5 soal pilihan ganda dari bank soal** yang
+dibuka lewat **Terminal Soal**, sehingga total 22 tantangan inti + 8 puzzle bank + 20 soal bank = **50 tantangan**
+saat dimainkan. Soal bank diundi per peserta dan disimpan pada `bank_picks`, jadi soal tidak
+berganti saat terminal dibuka ulang.
 
 Setiap tantangan memiliki pembahasan singkat yang muncul setelah dijawab, sehingga berfungsi sebagai *feedback* formatif — bukan sekadar benar/salah.
 
 **Cara tantangan dibuka (eksplorasi, bukan menu):**
 
-| Wilayah | Pemicu tantangan |
-|---|---|
-| Kota Unggul | Bicara dengan **Kepala Kota** (tanda `!`) |
-| Hutan Pengetahuan | Periksa 5 objek pencarian; tiap objek membuka satu tantangan |
-| Pabrik Limbah | Bicara dengan teknisi |
-| Candi Kuno | Bicara dengan penjaga candi |
-| Danau Citra | Bicara dengan **Inventor**; tantangan perakitan terkunci sampai 4 komponen perangkat (sensor pH air, papan rangkaian & kabel jumper, mikrokontroler ber-WiFi, sumber daya) **dibeli di toko Pedagang, Kota Unggul** |
-| The Source | Bicara dengan penjaga gerbang final; 4 ujian integrasi melawan boss |
+Sejak revisi, alur tiap wilayah punya dua lapis yang jelas: **belajar dari NPC**, lalu **mengerjakan
+tantangan dari benda di peta**. NPC tidak lagi membuka tantangan.
+
+| Wilayah | Objek pemicu tantangan | Catatan |
+|---|---|---|
+| Kota Unggul | Papan Pengumuman → Aturan Perjalanan; Buku Aturan → Arti Sebuah Badge | 2 objek, tanpa bank soal |
+| Hutan Pengetahuan | Papan Data, Buku Registri, Catatan Lapangan → 3 tantangan inti; **Terminal Soal** → 5 soal bank | |
+| Pabrik Limbah | Panel Proses, Ruang Kendali, Mesin Utama, Jadwal Lini → 4 tantangan inti; **Terminal Soal** → 5 soal bank | |
+| Candi Kuno | Prasasti Tua, Meja Sandi, Relief Sandi, Gapura Terkunci, Sumur Pesan → 5 tantangan inti; **Terminal Soal** → 5 soal bank | |
+| Danau Citra | Dermaga Sensor, Meja Perakitan, Menara Sinyal, Pos Pemantau → 4 tantangan inti; **Terminal Soal** → 5 soal bank | Tantangan perakitan terkunci sampai 4 komponen perangkat (sensor pH air, papan rangkaian & kabel jumper, mikrokontroler ber-WiFi, sumber daya) **dibeli di toko Pedagang, Kota Unggul** |
+| The Source | Inti Sumber, Pilar Data, Altar Sandi, Gerbang Akhir → 4 ujian integrasi melawan boss | |
+
+**NPC pengajar** ada tiga di setiap wilayah selain Kota Unggul (Kota Unggul empat, karena satu di
+antaranya pedagang). Semua NPC menyampaikan materi wilayahnya; rincian ada di bagian 3g.
 
 ## 3. Mekanik yang menjawab revisi proposal
 
@@ -60,6 +71,111 @@ The Source menampilkan **bar HP boss** yang berkurang tiap ujian integrasi yang 
 
 **f. Instrumen terintegrasi, tanpa pre-test.**
 Rancangan penelitian adalah *one-group posttest-only* (Bab III 3.1), sehingga hanya **post-test 20 soal** (5 soal tiap materi) dan **SUS 10 butir** yang dipakai; keduanya berada di dalam game (`scripts/ui/asesmen.gd`) dan terbuka otomatis setelah Map 6 selesai. Nilai post-test = benar/20 × 100 dengan batas tuntas **70**; skor SUS memakai pola ganjil `(x-1)` dan genap `(5-x)` dikali 2,5, dibandingkan dengan acuan **68,0** (Hyzy dkk., 2022). Data peserta (kode, tanggal, durasi, nilai, benar per materi, SUS) disimpan di `user://records_terra.json` dan dapat diekspor ke CSV.
+
+**g. Tiga NPC pengajar di setiap wilayah (tambahan sesuai arahan dosen penguji).**
+Setiap wilayah selain Kota Unggul punya **tiga NPC**, dan semuanya mengajar — bukan hanya satu tokoh
+istimewa. Materi tidak ditulis ulang di dialog: `_lesson_lines()` di `scripts/main.gd` menyusun baris
+percakapan dari `lesson`/`explain` setiap tantangan wilayah tersebut, sehingga materi NPC selalu
+sama dengan yang diujikan. Dialog ditutup dengan kalimat yang menegaskan bahwa tantangan **tidak**
+dimulai dari NPC, melainkan dari benda bertanda `?` di peta.
+
+**h. Quest dimulai dari objek di peta (tambahan sesuai arahan dosen penguji).**
+Memisahkan "belajar dari orang" dan "mengerjakan dari benda" membuat pemain melewati materi lebih
+dulu, dan memberi alasan untuk menjelajah. Objek membuka tantangan yang tertaut **setelah** dialog
+objek selesai (`_on_inspect_object` → `_resolve_object`). Objek yang tantangannya sudah selesai tidak
+membuka apa pun. Untuk wilayah materi, **Terminal Soal** membuka soal bank berikutnya yang belum
+selesai (`_open_next_bank_challenge`), dan menyelesaikan satu soal **tidak** otomatis membuka soal
+berikutnya — pemain harus kembali ke terminal.
+
+**i. Nyawa tiga per wilayah; reset menghapus progres, bukan pembelian.**
+Aturan lengkapnya:
+
+- Setiap wilayah punya **3 nyawa**, ditampilkan di HUD sebagai `Nyawa n/3` (berlaku juga di Kota
+  Unggul dan The Source, bukan hanya wilayah ber-bank soal).
+- Satu jawaban salah memotong satu nyawa, tetapi **satu tantangan hanya bisa memotong satu nyawa**
+  (`penalized[cid]`), supaya satu soal sulit tidak menghabiskan wilayah.
+- Ketika nyawa mencapai 0 (`Game._fail_map`): **seluruh progres tantangan dan badge di semua wilayah
+  dihapus**, undian soal, status post-test/SUS, dan pilihan ending ikut dikosongkan, lalu pemain
+  dikembalikan ke Kota Unggul. Panel tantangan ditutup dan muncul pesan: *"Nyawa habis — semua
+  progres dan badge direset. Uang dan barang tetap tersimpan."*
+- Yang **tetap** dimiliki pemain: uang, item (mis. Lensa Analisis), komponen perangkat yang sudah
+  dibeli, dan kode peserta. Jadi perakitan di Danau Citra tidak perlu membeli ulang.
+- **Koin hanya dibayar sekali per tantangan** (`earned`), termasuk setelah reset — mengulang wilayah
+  tidak menjadi cara menambah uang tanpa batas.
+- Setelah reset, penguncian wilayah kembali mengikuti badge: hanya Kota Unggul terbuka, dan pemain
+  dapat menyelesaikan Kota lalu masuk Hutan Pengetahuan seperti pertama kali.
+
+**j. Dua ragam quest: kuis pilihan ganda dan puzzle; setiap NPC punya cerita sendiri.**
+
+- **Kuis pilihan ganda** (Terminal Soal): 5 soal acak dari bank 50 soal materi tersebut. Jawaban
+  salah memotong **1 nyawa**.
+- **Puzzle** (benda rusak di peta atau NPC pendamping): diambil acak dari **bank 10 puzzle per
+  materi** (`data/puzzle_bank.gd`), ragamnya **mengurutkan langkah/sintaks** (`order`) dan
+  **isi bagian rumpang** (`fill`). Salah menjawab **tidak** memotong satu nyawa, tetapi langsung
+  menghabiskan nyawa wilayah (`fatal`), sehingga progres direset dan pemain kembali ke Kota Unggul.
+- Setiap wilayah materi punya **2 slot puzzle**: satu ditawarkan NPC yang berbeda dari NPC pengajar
+  (mis. Asisten Arsip di Hutan), satu dibuka dari **benda rusak** yang diperbaiki (Pompa Rusak,
+  Katup Macet, Lonceng Retak, Pipa Bocor).
+- Seluruh **19 NPC punya cerita sendiri** (`story`) yang ditampilkan lebih dulu setiap kali diajak
+  bicara, sehingga dunia terasa hidup; materi tetap disampaikan sesudahnya.
+
+**k. Tampilan panel menyatu dengan dunia hutan (bukan UI modern).**
+
+- Seluruh layar dalam game memakai tema **papan kayu + kertas lusuh**: bingkai kayu berpakuh dengan
+  lumut di sudut, pita kayu untuk kepala panel, kertas berserat untuk soal dan pilihan jawaban, serta
+  tombol papan kayu dan tombol daun.
+- Judul dan penanda bagian memakai huruf pixel (`PressStart2P`), teks isi tetap huruf bulat agar
+  nyaman dibaca.
+- Nyawa wilayah tampil sebagai **tiga hati** di kepala panel, bukan angka saja.
+- Tekstur dibuat ulang lewat `tools/gen_ui_textures.py` (9-patch 4x) sehingga bisa disesuaikan tanpa
+  aplikasi pengolah gambar.
+- Dua koreksi setelah pemeriksaan gambar: (1) bayangan huruf pixel diturunkan menjadi **1 px** karena
+  offset 2 px pada huruf kecil terbaca seperti teks dobel; (2) butir/serat tekstur hanya digambar di
+  **cincin tepi** tekstur, karena bagian tengah 9-patch diregangkan sehingga butir berubah menjadi garis
+  putus-putus atau pola berulang yang menutupi huruf.
+- **Tema per wilayah.** Panel kuis dan puzzle memakai bahan wilayahnya sendiri, bukan satu gaya
+  seragam, supaya terasa bagian dari peta:
+
+  | Wilayah | Bingkai | Kertas soal | Warna aksen |
+  |---|---|---|---|
+  | 01 Kota Unggul | kayu jati + paku emas | kertas tua kekuningan | emas |
+  | 02 Hutan Pengetahuan | kayu berlumut | kertas daun kehijauan | hijau daun |
+  | 03 Pabrik Limbah | pelat besi + rivet + karat | pelat logam abu terang | jingga karat |
+  | 04 Candi Kuno | batu pahat keemasan | kertas pasir | kuning batu |
+  | 05 Danau Citra | kayu apung kebiruan | kertas basah bertetes | biru air |
+  | 06 The Source | obsidian berserat kristal | kertas kristal keunguan | ungu |
+
+  Warna huruf soal ikut menyesuaikan kertas tiap wilayah, dan tombol papan memakai warna bahan
+  wilayah yang sama. Tema dipasang lewat `UiKit.set_theme(map_id)` saat panel dibuka.
+
+**l. Layar jeda, jurnal misi, dan penanda tujuan.**
+
+- **Layar jeda (`scripts/ui/pause_menu.gd`).** `Esc` saat bermain membuka panel jeda; pohon scene
+  dijeda sehingga pemain benar-benar berhenti. Isinya penggeser **Musik**, **Efek Suara** (ujung
+  kirinya **Mati**), dan **Kecepatan Teks** (0,5x–2,0x), lalu tombol **Lanjutkan**, **Jurnal Misi**, **Ulangi Wilayah Ini**,
+  dan **Kembali ke Menu Utama**. Ketiga setelan disimpan bersama simpanan permainan (`bgm_db`,
+  `sfx_db`, `text_speed`), jadi tidak perlu diatur ulang tiap sesi. Tombol Peta Wilayah tetap di `M`,
+  sedangkan `Esc` tidak lagi melompat ke peta.
+- **Ulangi wilayah** memanggil `Game.restart_map(map_id)`: progres dan nyawa wilayah itu dikembalikan,
+  tetapi **uang, barang, komponen, dan badge tetap**. Tombolnya meminta penegasan sekali tekan
+  ("Yakin? Progres wilayah ini direset") supaya tidak terpencet tanpa sengaja.
+- **Jurnal misi (`scripts/screens/journal.gd`).** Satu layar dua kolom: kiri daftar enam wilayah
+  beserta `selesai/total` dan status kunci; kanan rincian tantangan wilayah terpilih. Tiap baris
+  menuliskan status (`OK` atau nomor), judul tantangan, dan **pemicunya** — nama benda atau NPC yang
+  harus ditemui. Data pemicu berasal dari `Content.trigger_of(map_id, challenge_id)`, yang mencari
+  objek ber-`challenge` sama, lalu objek `bank`/`puzzle` wilayah, lalu NPC pemberi quest. Jurnal bisa
+  dibuka dengan `J` saat bermain, dari layar jeda, atau dari Peta Wilayah.
+- **Penanda tujuan.** Tombol **Tandai** di jurnal menaruh belah ketupat emas berdenyut di atas benda
+  atau NPC pemicu (`world.mark_objective()`), dan panah kompas HUD menunjuk ke sana sampai pemain
+  mendekat (±130 px). Ini menjawab keluhan "harus ke mana?" tanpa memaksa pemain menghafal koordinat.
+- **Mode Riset dibuka dengan Ctrl+R.** Tombolnya tidak lagi dipasang di menu utama karena layar itu berisi data pengujian (peserta, nilai, SUS, durasi), bukan fitur pemain; dari layar judul atau layar Peta Wilayah tekan **Ctrl+R**. Kodenya, ekspor CSV, dan ringkasan rata-rata tetap utuh untuk keperluan Bab IV.
+- **Layar judul diringkas.** Hanya tersisa label *GAME EDUKASI*, judul, satu baris tagline, empat tombol (Mulai Perjalanan, Lanjutkan, Peta Wilayah, Pengaturan), dan nomor versi kecil di pojok kiri bawah. Baris identitas kelompok, kata *prototipe*, dan daftar tombol tidak lagi ditulis di judul.
+- **Daftar kontrol pindah ke layar jeda.** Blok **KONTROL** berisi `WASD / panah  jalan · E interaksi · J jurnal · M peta · Esc menu`. Ini sekaligus membetulkan dua kekurangan baris lama: panah tidak pernah disebut padahal berfungsi, dan tombol J (jurnal) belum tertulis di mana pun. Blok ini disembunyikan saat panel dipakai sebagai layar pengaturan dari judul.
+- **Pengaturan di layar judul.** Tombol **Pengaturan** di bawah tombol Peta Wilayah membuka panel yang sama dalam mode ringkas (tiga penggeser + Kembali), sehingga pemain bisa menyetel bunyi sebelum masuk peta. Setelan disimpan di berkas terpisah `user://settings_terra.json`, bukan di simpanan permainan — kalau ikut simpanan, pemain yang baru menyetel volume akan dianggap sudah punya simpanan dan tombol "Lanjutkan" menyala padahal belum pernah bermain.
+- **Koleksi badge.** Angka badge di HUD (`0 / 4  ›`) bisa diklik dan membuka layar berisi empat kartu: ikon, nama badge, asal wilayah, jumlah tantangan, dan status **Sudah dikumpulkan** atau **Selesaikan n/N tantangan …**. Badge yang belum didapat ditampilkan redup. Jumlah tantangan diambil dari `Game.map_total()`, bukan dari data peta mentah, supaya cocok dengan angka di HUD (10/11/12/11).
+- Pesan singkat (toast) disembunyikan saat jurnal/jeda dibuka dan lapisan jurnal berada di atas HUD,
+  supaya tidak ada tulisan yang menembus panel — kesalahan yang sama seperti kasus toast di Peta
+  Wilayah.
 
 ## 4. Catatan art pass v0.4 (peta & sprite)
 
@@ -100,7 +216,7 @@ Main.tscn (Control)
 └── main.gd            state: title | map | research | playing | ending
     ├── title.gd
     ├── map_select.gd
-    ├── research.gd    rekap peserta + ekspor CSV + pintu masuk asesmen
+    ├── research.gd    rekap peserta + ringkasan rata-rata + ekspor CSV + asesmen
     ├── world.gd       dibangun dari assets/maps/<id>.json
     │   ├── player.gd
     │   ├── npc (Area2D)
@@ -112,7 +228,7 @@ Main.tscn (Control)
     └── badge_popup.gd
 Autoload: Game (game_state.gd) — badge, progres, simpan/muat, rekap peserta, audio
 Audio: assets/audio/*.wav (sintesis tools/gen_audio.py) — bgm_explore/bgm_final,
-  sfx klik/ok/salah/koin/badge/portal; toggle "Suara" di HUD
+  sfx klik/ok/salah/koin/badge/portal; penggeser volume di layar jeda
 Data: data/content.gd — seluruh konten teks & kunci jawaban
 ```
 
@@ -120,7 +236,7 @@ Seluruh konten berada di `data/content.gd`, terpisah dari logika. Menambah soal 
 
 ## 7. Hasil uji fungsional
 
-Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) — **109 cek, 0 gagal**:
+Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) — **248 cek, 0 gagal**:
 
 | No | Yang diuji | Hasil |
 |---|---|---|
@@ -130,11 +246,11 @@ Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) 
 | 4 | Penjaga gerbang menyebut syarat badge; map terkunci menampilkan alasan | OK |
 | 5 | Hutan: 5 objek pencarian, temuan tampil lalu tantangan terbuka | OK |
 | 6 | Danau: tidak ada komponen di peta; perakitan terkunci sebelum 4 komponen dibeli di toko | OK |
-| 7 | Seluruh 25 tantangan pada 6 map dapat diselesaikan | OK |
+| 7 | Seluruh 50 tantangan (22 inti + 8 puzzle bank + 20 soal bank) pada 6 map dapat diselesaikan | OK |
 | 8 | Satu quest selesai **belum** memberi badge; satu map hanya memberi satu badge | OK |
 | 9 | Badge diberikan setelah seluruh quest satu map selesai dan membuka map berikutnya | OK |
 | 10 | Map 1 (hub) tidak memberi badge, tetapi membuka Map 2 setelah quest pengantar | OK |
-| 11 | Post-test: 20 soal, 5 soal tiap materi, 4 opsi, kunci valid | OK |
+| 11 | Post-test: 20 soal diundi dari bank 200 soal (5 tiap materi), 4 opsi, kunci valid | OK |
 | 12 | Penilaian: 20 benar = 100 (tuntas), 10 benar = 50 (belum tuntas) | OK |
 | 13 | SUS: jawaban paling positif 100, tengah 75, paling negatif 0 | OK |
 | 14 | Panel asesmen: mulai dari halaman kode peserta, ringkasan bila sudah selesai, bisa ditutup | OK |
@@ -144,6 +260,14 @@ Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) 
 | 18 | Keputusan ending tersimpan dan teks ending mengikuti pilihan pemain | OK |
 | 19 | Simpan & muat mengembalikan badge, progres tantangan, dan status asesmen | OK |
 | 20 | Kasus batas: batal asesmen, post-test tanpa SUS, SUS menyusul, kode peserta ganda, SUS tidak lengkap, tantangan ganda, durasi lintas sesi, jawaban kosong, berkas rekap rusak, peserta baru | OK |
+| 21 | Layar jeda: `Esc` membuka jeda (bukan peta), pohon scene benar-benar berhenti, ketiga penggeser tersimpan di berkas setelan | OK |
+| 22 | Ulangi wilayah: progres dan nyawa wilayah kembali, uang/inventori/komponen/badge tetap | OK |
+| 23 | Jurnal misi: enam wilayah terdaftar, jumlah baris sama dengan jumlah tantangan, tiap baris punya pemicu yang valid (benda/NPC), tidak ada quest yatim | OK |
+| 24 | Setelan di layar judul: tersimpan di berkas sendiri, terbaca lagi saat game dibuka, dan tidak membuat tombol "Lanjutkan" menyala | OK |
+| 25 | Koleksi badge: empat kartu, status didapat/belum, jumlah tantangan tiap wilayah sesuai HUD, bisa ditutup dan permainan lanjut | OK |
+| 26 | Ringkasan Mode Riset: rata-rata post-test, ketuntasan (n/N dan %), rata-rata SUS (hanya yang mengisi), rata-rata durasi, rata-rata benar per materi, dan data kosong tidak error | OK |
+| 27 | Layar judul bersih: tidak ada tombol Mode Riset, tidak ada baris kontrol/identitas/kata prototipe, dan Ctrl+R dari judul membuka Mode Riset lalu kembali ke judul | OK |
+| 28 | Layar jeda memuat daftar kontrol (WASD/panah, E, J, M, Esc), daftar itu disembunyikan di layar pengaturan, dan HUD hilang saat jeda lalu muncul lagi setelah ditutup | OK |
 
 Sepuluh kasus batas diuji khusus karena paling mudah rusak saat konten direvisi:
 
@@ -158,11 +282,11 @@ Sepuluh kasus batas diuji khusus karena paling mudah rusak saat konten direvisi:
 9. **Berkas rekap rusak** — dibaca sebagai daftar kosong, game tetap berjalan.
 10. **Peserta baru** — `reset` mengosongkan kode peserta agar data peserta sebelumnya tidak tertimpa.
 
-Audit isi konten (`godot --headless --script res://scripts/audit_konten.gd`) — **437 cek, 0 gagal**: struktur 6 peta, 25 tantangan (4–5 tantangan konsep + 1 tantangan akhir per map), kelengkapan kunci jawaban tiap tantangan, tipe tantangan (`mcq`/`build`/`order`/`cipher`/`craft`) beserta data yang dibutuhkan tiap tipe, 20 soal post-test (sebaran kunci A/B/C/D = 5/5/5/5, tiap kunci menunjuk opsi yang valid), 10 butir SUS (polaritas bergantian positif–negatif), sandi Caesar (ciphertext digeser 3 menghasilkan kata yang diharapkan), keterjangkauan seluruh NPC/objek/portal dari titik awal tiap peta, keberadaan seluruh berkas aset (tilemap, sprite NPC, ikon badge), rujukan silang objek → tantangan dan badge → HUD, serta aturan toko: 4 komponen perangkat, harga, dan uang yang tersedia.
+Audit isi konten (`godot --headless --script res://scripts/audit_konten.gd`) — **1512 cek, 0 gagal**: struktur 6 peta, 42 tantangan (puzzle konsep + 5 soal bank per wilayah materi), bank soal 200 butir (50 per materi: id unik, 4 opsi unik, kunci valid, pembahasan, sebaran kunci), undian post-test 20 soal (5 per materi, stabil untuk peserta yang sama, berbeda antar peserta), aturan 3 nyawa per wilayah, kelengkapan kunci jawaban tiap tantangan, tipe tantangan (`mcq`/`build`/`order`/`cipher`/`craft`/`fill`) beserta data yang dibutuhkan tiap tipe, 20 soal post-test (sebaran kunci A/B/C/D = 5/5/5/5, tiap kunci menunjuk opsi yang valid), 10 butir SUS (polaritas bergantian positif–negatif), sandi Caesar (ciphertext digeser 3 menghasilkan kata yang diharapkan), keterjangkauan seluruh NPC/objek/portal dari titik awal tiap peta, keberadaan seluruh berkas aset (tilemap, sprite NPC, ikon badge), rujukan silang objek → tantangan dan badge → HUD, serta aturan toko: 4 komponen perangkat, harga, dan uang yang tersedia.
 
 Uji memakai berkas sendiri (`records_autotest.json`, `save_autotest.json`) dan menghapusnya setelah selesai, sehingga menjalankan tes tidak pernah menghapus `records_terra.json` berisi data peserta asli.
 
-Audit yang sama dijalankan juga pada build web hasil ekspor (`godot --headless --main-pack build/web/index.pck --script res://scripts/audit_konten.gd`) — **437 cek, 0 gagal** — untuk memastikan build yang diunggah benar-benar memuat konten terbaru, bukan versi lama.
+Audit yang sama dijalankan juga pada build web hasil ekspor (`godot --headless --main-pack build/web/index.pck --script res://scripts/audit_konten.gd`) — **1512 cek, 0 gagal** — untuk memastikan build yang diunggah benar-benar memuat konten terbaru, bukan versi lama.
 
 Uji manual pada build web: memuat layar judul, klik *Mulai Perjalanan*, berjalan ke NPC, dialog, panel tantangan, dan peta wilayah berjalan tanpa error konsol.
 
@@ -229,7 +353,7 @@ Batas jujur: hasil ini belum setara Citampi Stories yang seluruhnya digambar tan
 ### Art pass v0.8 (audio & NPC)
 
 - Musik sintetis `bgm_explore.wav` dipakai di lima wilayah; `bgm_final.wav` dipakai di The Source.
-- Efek klik, jawaban benar/salah, koin, badge, dan portal tersambung ke gameplay; tombol **Suara** di HUD mematikan/menyalakan audio.
+- Efek klik, jawaban benar/salah, koin, badge, dan portal tersambung ke gameplay; besar bunyi diatur lewat penggeser **Musik** dan **Efek Suara** di layar jeda; ujung kiri penggeser bertanda **Mati** sehingga game bisa dibisukan tanpa tombol terpisah di HUD.
 - NPC membalik arah hadap kiri/kanan sesuai posisi pemain (sprite belum punya pose samping).
 - Plang TOKO kini ditempatkan di depan kios, tidak lagi terbalik oleh variasi flip properti.
 - Dermaga Danau Citra mendapat tiang penyangga vertikal; diverifikasi pada gambar sumber peta.
@@ -244,7 +368,7 @@ Batas jujur: hasil ini belum setara Citampi Stories yang seluruhnya digambar tan
 | `dokumentasi/gameplay-tour.mp4` | Dua wilayah: kota → peta → hutan → temukan objek → tantangan → peta | 78 dtk |
 | `dokumentasi/gameplay-terbaru.mp4` | Build terkini (dengan musik): kota → toko Pedagang → jalan ke gerbang (terkunci) → quest selesai → gerbang terbuka → masuk Hutan | 57 dtk |
 
-Ketiganya direkam dari build Godot asli lewat Xvfb + ffmpeg (`tools/rekam.sh`), bukan animasi atau mockup. Video permainan penuh memakai mode demo `full` yang memainkan 25 tantangan, post-test, dan SUS secara otomatis (25/25 tantangan, 4/4 badge, nilai post-test 100, SUS 75).
+Ketiganya direkam dari build Godot asli lewat Xvfb + ffmpeg (`tools/rekam.sh`), bukan animasi atau mockup. Video permainan penuh memakai mode demo `full` yang memainkan 50 tantangan, post-test, dan SUS secara otomatis (50/50 tantangan, 4/4 badge, nilai post-test 100, SUS 75).
 
 ## 9. Daftar tangkapan layar (folder `dokumentasi/`)
 
@@ -303,12 +427,12 @@ Rujukan: *Pengembangan dan Evaluasi Game RPG Edukasi Terra Rebirth sebagai Media
 
 | Butir dokumen | Tuntutan | Status di prototipe |
 |---|---|---|
-| 1.4 Batasan masalah | Enam map, quest & puzzle tiap materi, badge sebagai syarat map berikutnya, uang & toko di Kota Unggul, post-test di map terakhir | Sesuai — 6 map, 25 tantangan, gating badge, toko 5 barang, post-test di Map 6 |
+| 1.4 Batasan masalah | Enam map, quest & puzzle tiap materi, badge sebagai syarat map berikutnya, uang & toko di Kota Unggul, post-test di map terakhir | Sesuai — 6 map, 50 tantangan (22 inti + 8 puzzle + 20 soal bank), gating badge, toko 5 barang, post-test di Map 6 |
 | 2.2.4 Tabel 2.2 | Mekanika: eksplorasi, dialog/NPC, quest, tantangan konsep, umpan balik & coba ulang, progresi badge, ekonomi uang–toko | Sesuai — lihat §3 |
 | 2.5 Tabel 2.4 | Badge setelah **seluruh** quest satu map; uang 1× per puzzle di Map 2–5 | Sesuai — `badge` hanya terbit saat `map_done == map_total`; uang 10 per puzzle, sekali |
 | 2.5 Tabel 2.5 | Urutan akses: Map 1 bebas, Map 2 syarat quest pengantar, Map 3–6 syarat badge sebelumnya | Sesuai — kunci akses tunggal adalah badge |
 | 2.6 Tabel 2.6 | Latar, materi, NPC pendamping, dan reward tiap map | Sesuai — nama map, NPC (Kepala Kota, Penjaga Gerbang, Pedagang, Peneliti Lingkungan, Peneliti Hutan, Teknisi Mesin, Penjaga Arsip, Inventor) dan badge |
-| 3.2 GDLC | Enam tahap: initiation, pre-production, production, testing, beta, release | Terdokumentasi — §4–§7 memetakan tahap testing/beta ke uji alpha (109 cek) dan uji isi (437 cek) |
+| 3.2 GDLC | Enam tahap: initiation, pre-production, production, testing, beta, release | Terdokumentasi — §4–§7 memetakan tahap testing/beta ke uji alpha (207 cek) dan uji isi (1456 cek) |
 | 3.3 Tabel 3.1 | Target pengguna mahasiswa, kontrol sederhana | Sesuai — WASD/arrow, `E` interaksi, `M` peta, `Esc` menu; tanpa syarat pengalaman bermain |
 | 3.6.1–3.6.4 | Capaian pembelajaran Basis Data, Sistem Operasi, Kriptografi, IoT | Sesuai — tiap butir a–d/ a–c dipetakan ke tantangan (lihat §2) |
 | 3.8 | Populasi mahasiswa, purposive sampling, target 30 responden, data tidak lengkap dikeluarkan | Sesuai sebagian — mode riset mencatat kode peserta, durasi, dan kelengkapan; target 30 ditampilkan di layar Data Peserta; keputusan mengeluarkan data tidak lengkap dilakukan peneliti |
@@ -316,6 +440,7 @@ Rujukan: *Pengembangan dan Evaluasi Game RPG Edukasi Terra Rebirth sebagai Media
 | 3.10 | Urutan: informed consent → main Map 1–6 → post-test → SUS; durasi 60 menit | Sesuai — layar persetujuan, asesmen terbuka otomatis di akhir Map 6, durasi tercatat; batas 60 menit dicatat manual oleh peneliti |
 | 3.11 | Statistik deskriptif, batas tuntas 70, skor SUS ×2,5, acuan 68, interpretasi Tabel 3.4 | Sesuai — rekap per peserta & per materi, ekspor CSV, interpretasi "dapat diterima / perlu diperbaiki" |
 | 3.12 | Etika: sukarela, data dikodekan, bukan nilai akademik | Sesuai — kode peserta, tanpa nama, data lokal `user://records_terra.json` |
+| Arahan penguji (revisi tambahan) | Tiga NPC pengajar per wilayah, quest dimulai dari objek di peta, dan nyawa habis mereset progres tanpa menghapus uang/barang | Sesuai — lihat §3g–§3i; dikunci oleh `autotest.gd` (207 cek) dan `audit_konten.gd` (1456 cek) |
 | 2.3 & 3.2.3 | Perangkat: Godot, GDScript, Blender, GitHub, Tiled, Krita, Dialogic, Audacity, Figma | **Belum seluruhnya** — lihat catatan di bawah |
 
 ### Catatan ketidaksesuaian alat (perlu diputuskan sebelum sidang)

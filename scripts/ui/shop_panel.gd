@@ -14,7 +14,7 @@ func _ready() -> void:
 	visible = false
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.03, 0.06, 0.78)
+	dim.color = Color(0.02, 0.05, 0.03, 0.84)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 
@@ -23,7 +23,7 @@ func _ready() -> void:
 	add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UiKit.panel_style(Color(0.075, 0.105, 0.16, 0.99), UiKit.BORDER, 14, 2))
+	panel.add_theme_stylebox_override("panel", UiKit.frame_style(28, 22))
 	panel.custom_minimum_size = Vector2(WIDTH, 0)
 	center.add_child(panel)
 

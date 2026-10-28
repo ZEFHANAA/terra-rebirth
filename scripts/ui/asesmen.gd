@@ -34,7 +34,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	_dim = ColorRect.new()
-	_dim.color = Color(0.02, 0.03, 0.06, 0.9)
+	_dim.color = Color(0.02, 0.05, 0.03, 0.88)
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_dim)
 
@@ -43,8 +43,7 @@ func _ready() -> void:
 	add_child(center)
 
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UiKit.panel_style(
-		Color(0.07, 0.1, 0.155, 0.99), UiKit.ACCENT, 14, 2))
+	_panel.add_theme_stylebox_override("panel", UiKit.frame_style(30, 24))
 	_panel.custom_minimum_size = Vector2(PANEL_W, 0)
 	center.add_child(_panel)
 
@@ -58,7 +57,7 @@ func _ready() -> void:
 	_box = UiKit.vbox(12)
 	margin.add_child(_box)
 
-	_post = _blank(Content.TEST_ITEMS.size())
+	_post = _blank(Game.posttest_items().size())
 	_sus = _blank(Content.SUS_ITEMS.size())
 
 func _blank(n: int) -> Array:
@@ -158,16 +157,17 @@ func _start_posttest() -> void:
 		_hint.text = "Isi kode peserta terlebih dahulu agar data dapat dicocokkan."
 		return
 	Game.player_code = kode
+	Game.post_picks.clear()
 	Game.save_game()
-	_post = _blank(Content.TEST_ITEMS.size())
+	_post = _blank(Game.posttest_items().size())
 	_qi = 0
 	_stage = "posttest"
 	_render()
 
 # --------------------------------------------------------------- post-test
 func _page_posttest() -> void:
-	var total := Content.TEST_ITEMS.size()
-	var item: Dictionary = Content.TEST_ITEMS[_qi]
+	var total := Game.posttest_items().size()
+	var item: Dictionary = Game.posttest_items()[_qi]
 
 	var head := UiKit.hbox(12)
 	_box.add_child(head)
@@ -196,9 +196,14 @@ func _page_posttest() -> void:
 		b.button_group = group
 		b.button_pressed = int(_post[_qi]) == oi
 		b.add_theme_font_size_override("font_size", 15)
-		b.add_theme_stylebox_override("normal", UiKit.panel_style(Color(0.06, 0.09, 0.13), UiKit.BORDER, 8, 1))
-		b.add_theme_stylebox_override("hover", UiKit.panel_style(Color(0.09, 0.13, 0.19), UiKit.ACCENT, 8, 1))
-		b.add_theme_stylebox_override("pressed", UiKit.panel_style(Color(0.1, 0.24, 0.2), UiKit.ACCENT, 8, 2))
+		b.add_theme_font_override("font", UiKit.body_font())
+		b.add_theme_color_override("font_color", UiKit.INK)
+		b.add_theme_color_override("font_hover_color", Color("241804"))
+		b.add_theme_color_override("font_pressed_color", Color("1f3d16"))
+		b.add_theme_color_override("font_hover_pressed_color", Color("1f3d16"))
+		b.add_theme_stylebox_override("normal", UiKit.parchment_style(20, 12))
+		b.add_theme_stylebox_override("hover", UiKit.parchment_style(20, 12))
+		b.add_theme_stylebox_override("pressed", UiKit.panel_style(Color("cfe0ab"), UiKit.ACCENT, 3, 3, false))
 		var idx := oi
 		b.toggled.connect(func(on: bool):
 			if on:
@@ -315,9 +320,14 @@ func _page_sus() -> void:
 		b.custom_minimum_size = Vector2(96, 52)
 		b.button_pressed = int(_sus[_qi]) == s
 		b.add_theme_font_size_override("font_size", 20)
-		b.add_theme_stylebox_override("normal", UiKit.panel_style(Color(0.06, 0.09, 0.13), UiKit.BORDER, 8, 1))
-		b.add_theme_stylebox_override("hover", UiKit.panel_style(Color(0.09, 0.13, 0.19), UiKit.ACCENT, 8, 1))
-		b.add_theme_stylebox_override("pressed", UiKit.panel_style(Color(0.1, 0.24, 0.2), UiKit.ACCENT, 8, 2))
+		b.add_theme_font_override("font", UiKit.body_font())
+		b.add_theme_color_override("font_color", UiKit.INK)
+		b.add_theme_color_override("font_hover_color", Color("241804"))
+		b.add_theme_color_override("font_pressed_color", Color("1f3d16"))
+		b.add_theme_color_override("font_hover_pressed_color", Color("1f3d16"))
+		b.add_theme_stylebox_override("normal", UiKit.parchment_style(20, 12))
+		b.add_theme_stylebox_override("hover", UiKit.parchment_style(20, 12))
+		b.add_theme_stylebox_override("pressed", UiKit.panel_style(Color("cfe0ab"), UiKit.ACCENT, 3, 3, false))
 		var val := s
 		b.toggled.connect(func(on: bool):
 			if on:

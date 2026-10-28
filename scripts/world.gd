@@ -17,6 +17,10 @@ var objects: Array = []
 var portal_node: Node2D
 var camera: Camera2D
 var _prompt_target := ""
+## Tujuan yang ditandai dari jurnal misi ("obj:<id>" atau "npc:<id>").
+## Selama terisi, HUD menunjuk ke sasaran ini, bukan ke objek terdekat.
+var marked := ""
+var _focus: Node2D
 var _t := 0.0
 var prop_block: Dictionary = {}
 var prop_fade: Array = []
@@ -37,6 +41,7 @@ func build(id: String) -> void:
 	_build_portal()
 	_build_player()
 	_build_camera()
+	_build_focus()
 
 func _load_meta(id: String) -> Dictionary:
 	var path := "res://assets/maps/%s.json" % id
@@ -253,9 +258,9 @@ func _build_npcs() -> void:
 		lb.reset_size()
 		lb.position = _clamp_label(spr.position + Vector2(-lb.size.x * 0.5, 18), lb.size.x)
 
-		# penanda misi di atas NPC pemberi tugas
+		# penanda di atas NPC pengajar materi
 		var mark: Label = null
-		if str(n.get("action", "quest")) == "quest":
+		if str(n.get("action", "")) == "materi":
 			mark = Label.new()
 			mark.text = "!"
 			mark.add_theme_font_override("font", UiKit.pixel_font())
@@ -270,7 +275,7 @@ func _build_npcs() -> void:
 
 		npcs.append({"id": str(n.get("id", "utama")), "name": str(n.get("name", "NPC")),
 			"action": str(n.get("action", "quest")), "node": spr, "mark": mark})
-		if str(n.get("action", "quest")) == "quest" and npc_node == null:
+		if npc_node == null:
 			npc_node = spr
 
 ## Ukuran satu frame pada sheet NPC.
@@ -329,6 +334,25 @@ func _build_objects() -> void:
 
 		objects.append({"id": str(o["id"]), "label": str(o.get("label", "Objek")),
 			"node": spr, "mark": mark, "data": o})
+
+## Penanda tujuan dari jurnal: belah ketupat keemasan yang berdenyut di atas
+## benda/NPC yang dipilih pemain.
+func _build_focus() -> void:
+	# Digambar sebagai poligon, bukan huruf, supaya tidak bergantung pada glyph
+	# yang tersedia di font pixel.
+	var root := Node2D.new()
+	root.z_index = 22
+	root.visible = false
+	var tepi := Polygon2D.new()
+	tepi.polygon = PackedVector2Array([Vector2(0, -13), Vector2(13, 0), Vector2(0, 13), Vector2(-13, 0)])
+	tepi.color = Color(0.10, 0.06, 0.02, 0.85)
+	root.add_child(tepi)
+	var isi := Polygon2D.new()
+	isi.polygon = PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)])
+	isi.color = UiKit.GOLD
+	root.add_child(isi)
+	add_child(root)
+	_focus = root
 
 func _build_portal() -> void:
 	var info: Dictionary = meta.get("portal", {})
@@ -445,6 +469,15 @@ func _animate_marks() -> void:
 		if active:
 			var obase: Vector2 = o["node"].position
 			om.position = obase + Vector2(-om.size.x * 0.5, -56 + bob)
+	if _focus != null:
+		var t := _marked_target()
+		if t.is_empty():
+			_focus.visible = false
+		else:
+			_focus.visible = true
+			var p: Vector2 = t["pos"]
+			_focus.position = p + Vector2(0, -92 + bob * 1.6)
+			_focus.modulate.a = 0.65 + 0.35 * sin(_t * 4.0)
 
 func _object_entry(obj_id: String) -> Dictionary:
 	for o in objects:
@@ -455,6 +488,16 @@ func _object_entry(obj_id: String) -> Dictionary:
 ## Objek disembunyikan bila tantangannya sudah selesai.
 ## Objek/NPC terdekat yang belum selesai — dipakai HUD untuk panah tujuan.
 func next_objective() -> Dictionary:
+	# Penanda dari jurnal misi menang atas objek terdekat, supaya pemain
+	# benar-benar diarahkan ke misi yang ia pilih.
+	if marked != "":
+		var t := _marked_target()
+		if t.is_empty():
+			clear_mark()
+		elif (t["pos"] as Vector2).distance_to(player.position) < 130.0:
+			clear_mark()
+		else:
+			return t
 	var best := {}
 	var best_d := 1e9
 	for o in objects:
@@ -478,6 +521,45 @@ func next_objective() -> Dictionary:
 			best_d = d2
 			best = {"pos": node2.position, "name": str(n.get("name", "NPC"))}
 	return best
+
+## Menaruh penanda pada satu objek/NPC. Mengembalikan false bila sasaran tidak
+## ada atau misinya sudah selesai.
+func mark_objective(target: String) -> bool:
+	if target == "":
+		return false
+	if _marked_target_of(target).is_empty():
+		return false
+	marked = target
+	return true
+
+func clear_mark() -> void:
+	marked = ""
+	if _focus != null:
+		_focus.visible = false
+
+## Sasaran penanda aktif, dalam bentuk {"pos", "name"}; kosong bila sasaran
+## sudah tidak ada (mis. misinya selesai dan objeknya disembunyikan).
+func _marked_target() -> Dictionary:
+	return _marked_target_of(marked)
+
+func _marked_target_of(target: String) -> Dictionary:
+	if target.begins_with("obj:"):
+		var o := _object_entry(target.substr(4))
+		if o.is_empty() or not _object_active(o):
+			return {}
+		var onode := o["node"] as Node2D
+		if onode == null:
+			return {}
+		return {"pos": onode.position, "name": str(o["label"])}
+	if target.begins_with("npc:"):
+		var n := _npc_entry(target.substr(4))
+		if n.is_empty():
+			return {}
+		var nnode := n["node"] as Node2D
+		if nnode == null:
+			return {}
+		return {"pos": nnode.position, "name": str(n.get("name", "NPC"))}
+	return {}
 
 func _object_active(o: Dictionary) -> bool:
 	var data: Dictionary = o["data"]

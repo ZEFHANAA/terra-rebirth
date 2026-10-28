@@ -3,6 +3,7 @@ extends Control
 
 signal map_chosen(map_id: String)
 signal back_pressed
+signal open_journal
 
 var _grid: GridContainer
 var _info: Label
@@ -10,9 +11,19 @@ var _info: Label
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
-	bg.color = UiKit.BG
+	bg.color = Color("081310")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	# Ubin dedaunan samar supaya latar tidak terasa kotak polos.
+	var leaves := TextureRect.new()
+	if ResourceLoader.exists("res://assets/ui/bg_leaves.png"):
+		leaves.texture = load("res://assets/ui/bg_leaves.png")
+	leaves.stretch_mode = TextureRect.STRETCH_TILE
+	leaves.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	leaves.modulate = Color(1, 1, 1, 0.55)
+	leaves.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	leaves.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(leaves)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -25,8 +36,11 @@ func _ready() -> void:
 	var v := UiKit.vbox(12)
 	margin.add_child(v)
 
+	var band := PanelContainer.new()
+	band.add_theme_stylebox_override("panel", UiKit.ribbon_style())
+	v.add_child(band)
 	var head := UiKit.hbox(16)
-	v.add_child(head)
+	band.add_child(head)
 	var hcol := UiKit.vbox(2)
 	head.add_child(hcol)
 	hcol.add_child(UiKit.kicker("PETA WILAYAH", UiKit.GOLD, 10))
@@ -36,6 +50,9 @@ func _ready() -> void:
 	head.add_child(sp)
 	_info = UiKit.label("", 15, UiKit.MUTED)
 	head.add_child(_info)
+	var btn_jurnal := UiKit.button("Jurnal Misi  [J]", 14, UiKit.BLUE)
+	btn_jurnal.pressed.connect(func(): open_journal.emit())
+	head.add_child(btn_jurnal)
 	var back := UiKit.button("Kembali  [Esc]", 14, UiKit.MUTED)
 	back.pressed.connect(func(): back_pressed.emit())
 	head.add_child(back)
@@ -65,12 +82,12 @@ func _card(m: Dictionary, idx: int) -> Control:
 		border = UiKit.ACCENT
 	elif unlocked:
 		border = UiKit.GOLD
-	var sb := UiKit.panel_style(Color(0.08, 0.11, 0.16, 1.0), border, 12, 1)
-	sb.content_margin_left = 14
-	sb.content_margin_right = 14
-	sb.content_margin_top = 12
-	sb.content_margin_bottom = 12
-	panel.add_theme_stylebox_override("panel", sb)
+	# Kartu seperti catatan kertas yang dipaku di papan peta.
+	if unlocked:
+		panel.add_theme_stylebox_override("panel", UiKit.parchment_style(16, 12))
+	else:
+		panel.add_theme_stylebox_override("panel",
+			UiKit.panel_style(Color("b7ab8c"), Color("6d5c42"), 2, 2, false))
 
 	var v := UiKit.vbox(8)
 	panel.add_child(v)
@@ -93,7 +110,7 @@ func _card(m: Dictionary, idx: int) -> Control:
 	v.add_child(top)
 	var num := UiKit.title("%02d" % (idx + 1), 13, UiKit.MUTED)
 	top.add_child(num)
-	var name_lbl := UiKit.title(str(m["name"]).to_upper(), 12, UiKit.TEXT if unlocked else UiKit.MUTED)
+	var name_lbl := UiKit.title(str(m["name"]).to_upper(), 13, UiKit.INK if unlocked else Color("4c4030"))
 	top.add_child(name_lbl)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -107,25 +124,27 @@ func _card(m: Dictionary, idx: int) -> Control:
 		ic.modulate = Color(1, 1, 1, 1) if Game.has_badge(str(m["badge"])) else Color(1, 1, 1, 0.18)
 		top.add_child(ic)
 
-	var mat := UiKit.label(str(m["material"]), 14, UiKit.ACCENT if unlocked else UiKit.MUTED)
+	var mat := UiKit.label(str(m["material"]), 14, Color("3d6b28") if unlocked else Color("5d5138"))
 	v.add_child(mat)
 
-	var desc := UiKit.label(str(m["desc"]), 13, UiKit.TEXT if unlocked else UiKit.MUTED, 300)
+	var desc := UiKit.label(str(m["desc"]), 13, Color("4a3a22") if unlocked else Color("5d5138"), 300)
 	v.add_child(desc)
 
-	var prog := UiKit.label("%d / %d tantangan" % [Game.map_done(str(m["id"])), Game.map_total(str(m["id"]))], 13, UiKit.MUTED)
+	var prog := UiKit.label("%d / %d tantangan" % [Game.map_done(str(m["id"])), Game.map_total(str(m["id"]))], 13, Color("6b5a3c") if unlocked else Color("5d5138"))
 	v.add_child(prog)
 
 	var sp2 := Control.new()
 	sp2.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp2)
 
-	var btn := UiKit.primary_button("Masuk  ▸" if unlocked else "Terkunci", UiKit.ACCENT if unlocked else UiKit.PANEL_3, 15)
+	var btn := UiKit.primary_button("Masuk  ▸" if unlocked else "Terkunci", UiKit.ACCENT, 15)
 	btn.custom_minimum_size = Vector2(0, 40)
 	if unlocked:
 		btn.pressed.connect(func(): map_chosen.emit(str(m["id"])))
 	else:
 		btn.text = "Terkunci  ·  " + Game.unlock_hint(str(m["id"]))
 		btn.disabled = true
+		btn.add_theme_stylebox_override("disabled", UiKit.tex_style("res://assets/ui/btn_wood_press.png", 18))
+		btn.add_theme_color_override("font_disabled_color", Color("d9cdb2"))
 	v.add_child(btn)
 	return panel
