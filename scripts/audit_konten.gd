@@ -36,8 +36,64 @@ func _initialize() -> void:
 	_tipe()
 	_puzzle_bank()
 	_cerita()
+	_petunjuk()
+	_npc()
 	print("\n=== %d cek, %d gagal ===" % [checks, fails])
 	quit(1 if fails > 0 else 0)
+
+## Setiap tantangan wajib punya bahan untuk satu kalimat petunjuk Lensa,
+## supaya pemain tidak pernah membayar Lensa tanpa mendapat petunjuk.
+func _petunjuk() -> void:
+	print("\n-- bahan petunjuk Lensa --")
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw["id"]))
+		for c in m.get("challenges", []):
+			# Soal dari bank (kuis & puzzle) baru punya pilihan saat diundi,
+			# jadi bahan petunjuknya diperiksa di bagian bank masing-masing.
+			if c.has("bank_materi"):
+				continue
+			var id := str(c.get("id", "?"))
+			match str(c.get("type", "")):
+				"mcq":
+					var opts: Array = c.get("options", [])
+					ok(opts.size() > 0 and int(c.get("answer", -1)) >= 0,
+						"%s: pilihan ganda punya kunci untuk petunjuk" % id)
+				"build":
+					var parts: Array = c.get("parts", [])
+					var siap := parts.size() > 0
+					for p in parts:
+						if str((p as Dictionary).get("answer", "")) == "":
+							siap = false
+					ok(siap, "%s: seluruh bagian SQL punya jawaban untuk petunjuk" % id)
+				"order":
+					ok((c.get("items", []) as Array).size() > 0,
+						"%s: langkah urutan tersedia untuk petunjuk" % id)
+				"cipher":
+					ok(str(c.get("ciphertext", "")) != "" and str(c.get("answer", "")) != "",
+						"%s: ciphertext & jawaban tersedia untuk petunjuk" % id)
+				"craft":
+					ok((c.get("slots", []) as Array).size() > 0,
+						"%s: slot rakit tersedia untuk petunjuk" % id)
+				"wire":
+					ok((c.get("links", []) as Array).size() > 0,
+						"%s: sambungan wajib tersedia untuk petunjuk" % id)
+	# Soal kuis yang diundi juga wajib punya kunci supaya Lensa memberi petunjuk.
+	for materi in Content.MATERI:
+		var siap := true
+		for q in Content.bank_of(materi):
+			var o: Array = q.get("options", [])
+			if o.is_empty() or int(q.get("answer", -1)) < 0 or int(q.get("answer", -1)) >= o.size():
+				siap = false
+		ok(siap, "%s: seluruh soal kuis punya kunci untuk petunjuk" % materi)
+	for materi in Content.MATERI:
+		for pz in Content.puzzles_of(materi):
+			var pid := str(pz.get("id", "?"))
+			if str(pz.get("type", "order")) == "fill":
+				ok((pz.get("accept", []) as Array).size() > 0,
+					"%s: kata jawaban tersedia untuk petunjuk isi rumpang" % pid)
+			else:
+				ok((pz.get("steps", []) as Array).size() > 0,
+					"%s: langkah tersedia untuk petunjuk urutan" % pid)
 
 func _struktur() -> void:
 	print("\n-- struktur peta --")
@@ -404,10 +460,75 @@ func _cerita() -> void:
 				ada_rusak = true
 		ok(ada_rusak, "%s: ada benda rusak yang bisa diperbaiki" % mid)
 
+## Data NPC: kelengkapan, aksi yang dikenal, dan rujukan nama di dalam teks.
+func _npc() -> void:
+	print("\n-- data NPC --")
+	var aksi := ["materi", "info", "shop", "gate", "quest"]
+	var semua_nama := {}
+	for raw in Content.MAPS:
+		for n in Content.npcs_of(Content.map_by_id(str(raw["id"]))):
+			semua_nama[str(n.get("name", ""))] = true
+	for raw in Content.MAPS:
+		var m := Content.map_by_id(str(raw["id"]))
+		var mid := str(m["id"])
+		var ns := Content.npcs_of(m)
+		ok(ns.size() >= 1, "%s: punya NPC (%d)" % [mid, ns.size()])
+		if mid == "kota":
+			ok(ns.size() == 4, "kota: 4 NPC sesuai rancangan (didapat %d)" % ns.size())
+		var ids := {}
+		var nama := {}
+		var teks := ""
+		for s in m.get("intro", []):
+			teks += str(s) + "\n"
+		for o in m.get("objects", []):
+			teks += str(o.get("label", "")) + "\n"
+			for s in o.get("text", []):
+				teks += str(s) + "\n"
+		for c in m.get("challenges", []):
+			teks += str(c.get("prompt", "")) + "\n" + str(c.get("explain", "")) + "\n"
+		var ada_tantangan := {}
+		for c2 in m.get("challenges", []):
+			ada_tantangan[str(c2.get("id", ""))] = true
+		for n2 in ns:
+			var nid := str(n2.get("id", "?"))
+			ids[nid] = true
+			nama[str(n2.get("name", ""))] = true
+			ok(str(n2.get("name", "")).strip_edges() != "" and str(n2.get("role", "")).strip_edges() != "",
+				"%s: NPC %s punya nama & peran" % [mid, nid])
+			ok(aksi.has(str(n2.get("action", ""))),
+				"%s: NPC %s memakai aksi dikenal ('%s')" % [mid, nid, str(n2.get("action", ""))])
+			var cerita_ok := (n2.get("story", []) as Array).size() >= 2
+			for s2 in n2.get("story", []):
+				teks += str(s2) + "\n"
+				if str(s2).strip_edges().length() < 15:
+					cerita_ok = false
+			ok(cerita_ok, "%s: NPC %s punya cerita utuh (>= 2 baris terisi)" % [mid, nid])
+			var dialog_ok := true
+			for s3 in n2.get("dialog", []):
+				teks += str(s3) + "\n"
+				if str(s3).strip_edges().length() < 15:
+					dialog_ok = false
+			ok(dialog_ok, "%s: NPC %s dialognya terisi penuh" % [mid, nid])
+			if n2.has("challenge"):
+				ok(ada_tantangan.has(str(n2["challenge"])),
+					"%s: NPC %s menunjuk tantangan %s" % [mid, nid, str(n2["challenge"])])
+		ok(ids.size() == ns.size(), "%s: id NPC unik (%d)" % [mid, ns.size()])
+		ok(nama.has(str(m.get("npc_name", ""))),
+			"%s: npc_name '%s' ada di daftar NPC" % [mid, str(m.get("npc_name", ""))])
+		# Nama NPC dari wilayah lain tidak boleh disebut di teks wilayah ini.
+		var nyasar: Array = []
+		for nm in semua_nama:
+			if nm == "" or nama.has(nm):
+				continue
+			if teks.findn(nm) >= 0:
+				nyasar.append(nm)
+		ok(nyasar.is_empty(), "%s: tidak menyebut NPC wilayah lain%s"
+			% [mid, "" if nyasar.is_empty() else " (%s)" % str(nyasar)])
+
 ## Tipe tantangan: harus dikenal panel puzzle dan punya data yang cukup.
 func _tipe() -> void:
 	print("\n-- tipe tantangan --")
-	var dikenal := ["mcq", "build", "order", "cipher", "craft", "fill", "puzzle"]
+	var dikenal := ["mcq", "build", "order", "cipher", "craft", "wire", "fill", "puzzle"]
 	for raw in Content.MAPS:
 		var m := Content.map_by_id(str(raw.get("id", "")))
 		for c in m.get("challenges", []):
@@ -457,6 +578,30 @@ func _tipe() -> void:
 					ok(slots.size() > 0, "%s: punya slot perakitan" % cid)
 					for s in slots:
 						ok(pool.has(str(s)), "%s: slot '%s' tersedia di pilihan" % [cid, str(s)])
+				"wire":
+					var nodes: Array = c.get("nodes", [])
+					var links: Array = c.get("links", [])
+					var ids: Array = []
+					for nd in nodes:
+						ids.append(str((nd as Dictionary).get("id", "")))
+					ok(nodes.size() >= 4, "%s: punya >= 4 komponen di papan" % cid)
+					var uniq := {}
+					for idn in ids:
+						uniq[idn] = true
+					ok(uniq.size() == ids.size(), "%s: id komponen tidak berulang" % cid)
+					for l in links:
+						var a2 := str((l as Array)[0])
+						var b2 := str((l as Array)[1])
+						ok(ids.has(a2) and ids.has(b2), "%s: sambungan '%s-%s' merujuk komponen yang ada" % [cid, a2, b2])
+						ok(a2 != b2, "%s: tidak ada kabel ke diri sendiri (%s)" % [cid, a2])
+					for nd in nodes:
+						var ndd := nd as Dictionary
+						if bool(ndd.get("decoy", false)):
+							var tidak_dipakai := true
+							for l in links:
+								if str((l as Array)[0]) == str(ndd.get("id", "")) or str((l as Array)[1]) == str(ndd.get("id", "")):
+									tidak_dipakai = false
+							ok(tidak_dipakai, "%s: pengganggu '%s' tidak masuk sambungan benar" % [cid, str(ndd.get("name", ""))])
 
 func _decode(s: String, shift: int) -> String:
 	var out := ""
@@ -508,4 +653,6 @@ func _kunci() -> void:
 					ok(c.has("answer_shift"), "%s: cipher punya answer_shift" % c["id"])
 				"craft":
 					ok(c.has("slots"), "%s: craft punya slots" % c["id"])
+				"wire":
+					ok(c.has("nodes") and c.has("links"), "%s: wire punya nodes+links" % c["id"])
 			ok(str(c.get("explain", "")).length() > 10, "%s: ada pembahasan (feedback)" % c["id"])

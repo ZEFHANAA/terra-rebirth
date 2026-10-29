@@ -174,6 +174,12 @@ item, dan komponen tidak berubah.
   dari data peserta: rata-rata nilai post-test, jumlah dan persentase tuntas,
   rata-rata SUS (hanya peserta yang mengisi), rata-rata durasi, dan rata-rata
   benar per materi.
+**FR-024**: Tantangan "Merakit Perangkat" (danau-3) MUST berupa puzzle kabel
+  visual (tipe `wire`): pemain menyambung pin antar komponen yang dibeli di
+  toko dengan klik dua pin, kabel bisa dicabut (klik ulang atau tombol cabut),
+  sambungan kurang hanya diperingatkan, dan sambungan salah bersifat fatal
+  (puzzle gagal, wilayah diulang). Papan memuat 4 komponen asli dan 2
+  komponen pengganggu yang tidak boleh masuk sambungan benar.
 
 ### Key Entities
 

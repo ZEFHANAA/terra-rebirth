@@ -89,7 +89,7 @@ func _card(m: Dictionary, idx: int) -> Control:
 		panel.add_theme_stylebox_override("panel",
 			UiKit.panel_style(Color("b7ab8c"), Color("6d5c42"), 2, 2, false))
 
-	var v := UiKit.vbox(8)
+	var v := UiKit.vbox(6)
 	panel.add_child(v)
 
 	# Potongan peta sebagai gambar kartu.
@@ -99,7 +99,7 @@ func _card(m: Dictionary, idx: int) -> Control:
 		tp = "res://assets/maps/%s.png" % str(m["id"])
 	if ResourceLoader.exists(tp):
 		thumb.texture = load(tp)
-	thumb.custom_minimum_size = Vector2(0, 54)
+	thumb.custom_minimum_size = Vector2(0, 44)
 	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	thumb.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR

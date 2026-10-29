@@ -384,6 +384,75 @@ func run() -> void:
 	check(main.puzzle._done, "jawaban benar menyelesaikan puzzle isi rumpang")
 	main.puzzle.visible = false
 
+	# --- puzzle kabel IoT (wire): merakit perangkat dengan menyambung pin
+	var wch: Dictionary = {}
+	for chd in Content.map_by_id("danau").get("challenges", []):
+		if str((chd as Dictionary).get("id", "")) == "danau-3":
+			wch = chd
+			break
+	main.puzzle.open(wch, 2, 11)
+	await wait(0.2)
+	check(main.puzzle._wire_pins.size() == 6, "papan wire menampilkan 6 komponen (4 asli + 2 pengganggu)")
+	check(not main.puzzle._paper.visible, "kertas soal besar disembunyikan demi papan wire")
+	check(main.puzzle._wire_count.text == "Kabel 0/4" and main.puzzle._wire_lamp.text.contains("mati"),
+		"penghitung kabel dan lampu perangkat tampil")
+
+	# kurang kabel: tidak dihukum, hanya diperingatkan
+	main.puzzle._on_wire_pin("daya")
+	main.puzzle._on_wire_pin("papan")
+	check(main.puzzle._wire_links.size() == 1, "klik dua pin memasang satu kabel")
+	check(main.puzzle._wire_count.text == "Kabel 1/4", "penghitung kabel bertambah")
+	var nyawa_sebelum := Game.lives_left("danau")
+	main.puzzle._on_wire_check()
+	await wait(0.2)
+	check(not main.puzzle._done and Game.lives_left("danau") == nyawa_sebelum,
+		"kurang kabel hanya diperingatkan, nyawa tidak berkurang")
+
+	# klik pasangan yang sama mencabut kabelnya (toggle)
+	main.puzzle._on_wire_pin("papan")
+	main.puzzle._on_wire_pin("daya")
+	check(main.puzzle._wire_links.is_empty(), "klik ulang pasangan mencabut kabel")
+
+	# cabut kabel terakhir
+	main.puzzle._on_wire_pin("daya")
+	main.puzzle._on_wire_pin("mcu")
+	main.puzzle._on_wire_undo()
+	check(main.puzzle._wire_links.is_empty(), "tombol cabut kabel terakhir bekerja")
+
+	# salah sambung = fatal (puzzle gagal, wilayah diulang dari awal)
+	var wilayah_gagal := {"ada": false}
+	var _pada_gagal := func(_m: String) -> void: wilayah_gagal["ada"] = true
+	Game.map_failed.connect(_pada_gagal)
+	main.puzzle._on_wire_pin("daya")
+	main.puzzle._on_wire_pin("led")
+	main.puzzle._on_wire_pin("sensor")
+	main.puzzle._on_wire_pin("kipas")
+	main.puzzle._on_wire_pin("papan")
+	main.puzzle._on_wire_pin("kipas")
+	main.puzzle._on_wire_pin("led")
+	main.puzzle._on_wire_pin("mcu")
+	main.puzzle._on_wire_check()
+	await wait(2.6)
+	check(wilayah_gagal["ada"] and not main.puzzle._done,
+		"salah sambung pada puzzle fatal menggagalkan wilayah")
+	check(Game.current_map == "kota" and main.current_map == "kota",
+		"puzzle wire gagal mengulang permainan dari Kota Unggul")
+	Game.map_failed.disconnect(_pada_gagal)
+	main.puzzle.visible = false
+
+	# sambungan benar (urutan pin dibalik) menyelesaikan puzzle
+	Game.reset()
+	main.puzzle.open(wch, 2, 11)
+	await wait(0.2)
+	for l in (wch.get("links", []) as Array):
+		main.puzzle._on_wire_pin(str((l as Array)[1]))
+		main.puzzle._on_wire_pin(str((l as Array)[0]))
+	main.puzzle._on_wire_check()
+	await wait(0.2)
+	check(main.puzzle._done, "sambungan benar (arah klik dibalik) menyalakan perangkat")
+	check(main.puzzle._wire_lamp.text.contains("menyala"), "lampu perangkat berubah menyala saat benar")
+	main.puzzle.visible = false
+
 	# --- tema panel mengikuti wilayah (bahan tiap peta berbeda)
 	var tema_ok := true
 	var tema_unik: Array = []
@@ -744,6 +813,11 @@ func _solve(ch: Dictionary) -> void:
 		"craft":
 			main.puzzle._craft_slots = (ch["slots"] as Array).duplicate()
 			main.puzzle._on_craft_check()
+		"wire":
+			for l in (ch.get("links", []) as Array):
+				main.puzzle._on_wire_pin(str((l as Array)[0]))
+				main.puzzle._on_wire_pin(str((l as Array)[1]))
+			main.puzzle._on_wire_check()
 		"fill":
 			main.puzzle._fill_edit.text = str((ch.get("accept", [""]) as Array)[0])
 			main.puzzle._on_fill_check()
@@ -913,3 +987,491 @@ func _uji_jeda_jurnal() -> void:
 	check(main.state == "research", "Ctrl+R dari judul membuka Mode Riset")
 	main._on_research_back()
 	check(main.state == "title", "kembali dari Mode Riset membuka judul lagi")
+
+	# 10. Lensa Analisis: petunjuk ada untuk semua jenis, tidak pernah hangus
+	var contoh := {
+		"mcq": ["kota", "kota-1"],
+		"build": ["hutan", "hutan-1"],
+		"order": ["hutan", "hutan-2"],
+		"cipher": ["candi", "candi-1"],
+		"craft": ["danau", "danau-1"],
+		"wire": ["danau", "danau-3"],
+	}
+	var kosong: Array = []
+	for jenis in contoh:
+		var info: Array = contoh[jenis]
+		var mid := str(info[0])
+		var cid := str(info[1])
+		var chs: Array = Content.map_by_id(mid)["challenges"]
+		var idx := 0
+		for i in chs.size():
+			if str((chs[i] as Dictionary).get("id", "")) == cid:
+				idx = i
+		Game.current_map = mid
+		main.puzzle.open(chs[idx], idx, chs.size())
+		await wait(0.05)
+		if main.puzzle._hint_text().is_empty():
+			kosong.append(cid)
+	check(kosong.is_empty(), "enam jenis tantangan punya petunjuk Lensa%s"
+		% ("" if kosong.is_empty() else " (kosong: %s)" % str(kosong)))
+	main.puzzle._on_close()
+	await wait(0.1)
+
+	# isi rumpang (dari bank puzzle) juga punya petunjuk
+	main.puzzle._c = {"type": "fill", "code": "___ INTO sumber_air", "accept": ["insert"]}
+	var hfill: String = main.puzzle._hint_text()
+	check(hfill.contains("insert") or hfill.contains("Insert") or hfill.contains("berawalan"),
+		"isi rumpang punya petunjuk dari kata jawaban")
+
+	# tanpa Lensa: tidak ada yang terpotong
+	Game.items["lensa"] = 0
+	main.puzzle._feedback.text = ""
+	main.puzzle._on_lensa()
+	check(Game.item_count("lensa") == 0 and main.puzzle._feedback.text.contains("tidak punya"),
+		"menekan Lensa tanpa persediaan tidak memotong apa pun")
+
+	# dengan Lensa: barang terpotong dan petunjuk muncul
+	Game.items["lensa"] = 1
+	main.puzzle._c = {"type": "order", "items": ["Langkah satu", "Langkah dua"]}
+	main.puzzle._on_lensa()
+	check(Game.item_count("lensa") == 0 and main.puzzle._feedback.text.contains("langkah pertama"),
+		"Lensa terpakai hanya saat petunjuknya muncul")
+
+	# soal tanpa bahan petunjuk: Lensa tidak dipotong
+	Game.items["lensa"] = 1
+	main.puzzle._c = {"type": "mcq"}
+	main.puzzle._on_lensa()
+	check(Game.item_count("lensa") == 1 and main.puzzle._feedback.text.contains("Belum ada petunjuk"),
+		"soal tanpa petunjuk tidak memotong Lensa")
+	Game.items["lensa"] = 0
+
+	# 11. NPC di semua peta: dialog terbuka, berisi, dan tidak error
+	Game.badges = ["nature", "core", "cipher", "aqua"] as Array[String]
+	var npc_gagal: Array = []
+	var npc_total := 0
+	var peta_gagal: Array = []
+	for raw_m in Content.MAPS:
+		var mid3 := str(raw_m["id"])
+		main._start_play(mid3)
+		await wait(0.4)
+		main.dialog.visible = false
+		if main._world == null:
+			peta_gagal.append(mid3)
+			continue
+		for n3 in Content.npcs_of(Content.map_by_id(mid3)):
+			npc_total += 1
+			main._on_talk_npc(str(n3.get("id", "")))
+			await wait(0.05)
+			var isi: String = ""
+			if main.dialog._text != null:
+				isi = main.dialog._text.text
+			if not main.dialog.visible or isi.strip_edges().length() < 15:
+				npc_gagal.append("%s/%s" % [mid3, str(n3.get("id", ""))])
+			main.dialog.visible = false
+	check(peta_gagal.is_empty(), "keenam peta bisa dimuat%s"
+		% ("" if peta_gagal.is_empty() else " (gagal: %s)" % str(peta_gagal)))
+	check(npc_gagal.is_empty(), "%d NPC di 6 peta membuka dialog berisi%s"
+		% [npc_total, "" if npc_gagal.is_empty() else " (gagal: %s)" % str(npc_gagal)])
+	# cerita tiap NPC ikut tampil di dialog, bukan hanya cerita NPC utama
+	var ada_cerita := false
+	for n4 in Content.npcs_of(Content.map_by_id("danau")):
+		if (n4.get("story", []) as Array).size() >= 2:
+			ada_cerita = true
+	check(ada_cerita, "NPC wilayah punya cerita sendiri yang ikut ditampilkan")
+
+	# 12. audit tata letak: tidak ada teks terpotong / elemen keluar layar
+	await _ui_audit()
+
+	# 13. tampilan NPC di tiap peta: kaki, nama, tanda seru, pijakan
+	await _npc_visual()
+
+	# 14. pohon di depan pemain harus memudar supaya karakter tidak hilang
+	var fade_gagal: Array = []
+	for mm5 in Content.MAPS:
+		main._start_play(str(mm5["id"]))
+		await wait(0.45)
+		main.dialog.visible = false
+		var w5 = main._world
+		if (w5.prop_fade as Array).is_empty():
+			continue
+		var sp5: Sprite2D = w5.prop_fade[0]
+		var r5: Rect2 = w5.prop_rects[0]
+		w5.player.position = Vector2(r5.position.x + r5.size.x * 0.5, r5.position.y + r5.size.y - 12.0)
+		await wait(0.8)
+		if sp5.modulate.a > 0.9:
+			fade_gagal.append(str(mm5["id"]))
+	check(fade_gagal.is_empty(), "pohon di depan pemain memudar%s"
+		% ("" if fade_gagal.is_empty() else " (gagal: %s)" % str(fade_gagal)))
+
+	# 15. benda yang dicari tidak tertutup kanopi pohon
+	var obj_tutup: Array = []
+	for mm6 in Content.MAPS:
+		main._start_play(str(mm6["id"]))
+		await wait(0.4)
+		main.dialog.visible = false
+		var w6 = main._world
+		for ob in w6.objects:
+			var spr6: Sprite2D = ob["node"]
+			var osz6: Vector2 = spr6.texture.get_size()
+			var or6 := Rect2(spr6.position + spr6.offset - osz6 * 0.5, osz6)
+			for j6 in range((w6.prop_fade as Array).size()):
+				var psp: Sprite2D = w6.prop_fade[j6]
+				if psp.position.y <= spr6.position.y:
+					continue
+				var kr6: Rect2 = w6.prop_rects[j6]
+				var kx6 := minf(kr6.position.x + kr6.size.x, or6.position.x + or6.size.x) - maxf(kr6.position.x, or6.position.x)
+				var ky6 := minf(kr6.position.y + kr6.size.y, or6.position.y + or6.size.y) - maxf(kr6.position.y, or6.position.y)
+				if kx6 > 0.0 and ky6 > 0.0 and kx6 * ky6 > or6.size.x * or6.size.y * 0.45:
+					obj_tutup.append("%s/%s" % [str(mm6["id"]), str(ob["label"])])
+	check(obj_tutup.is_empty(), "benda pencarian tidak tertutup kanopi%s"
+		% ("" if obj_tutup.is_empty() else " (gagal: %s)" % str(obj_tutup)))
+
+	# 16. urutan gambar (siapa menimpa siapa) dihitung dari kaki, bukan tengah badan
+	var urut_gagal: Array = []
+	for mm7 in Content.MAPS:
+		main._start_play(str(mm7["id"]))
+		await wait(0.35)
+		main.dialog.visible = false
+		var w7 = main._world
+		for n7 in w7.npcs:
+			var s7: AnimatedSprite2D = n7["node"]
+			var fs7: Vector2 = s7.sprite_frames.get_frame_texture("idle_down", 0).get_size()
+			var kaki7: float = s7.position.y + (fs7.y * 0.5 + s7.offset.y) * s7.scale.y
+			if absf(kaki7 - s7.position.y) > 1.0:
+				urut_gagal.append("%s/%s" % [str(mm7["id"]), str(n7["name"])])
+		for o7 in w7.objects:
+			var so7: Sprite2D = o7["node"]
+			var dasar7: float = so7.position.y + so7.offset.y + so7.texture.get_size().y * 0.5
+			if absf(dasar7 - so7.position.y) > 1.0:
+				urut_gagal.append("%s/%s" % [str(mm7["id"]), str(o7["label"])])
+		for p7 in w7.prop_fade:
+			var sp7: Sprite2D = p7
+			var dasar7b: float = sp7.position.y + (sp7.offset.y + sp7.texture.get_size().y * 0.5) * sp7.scale.y
+			if absf(dasar7b - sp7.position.y) > 1.0:
+				urut_gagal.append("%s/pohon" % str(mm7["id"]))
+	check(urut_gagal.is_empty(), "titik urut gambar semua aktor di kaki%s"
+		% ("" if urut_gagal.is_empty() else " (gagal: %s)" % str(urut_gagal)))
+
+	# 17. animasi NPC: minimal dua gambar, ukuran sama, dan benar-benar diputar
+	var anim_gagal: Array = []
+	for mm8 in Content.MAPS:
+		main._start_play(str(mm8["id"]))
+		await wait(0.35)
+		main.dialog.visible = false
+		for n8 in main._world.npcs:
+			var s8: AnimatedSprite2D = n8["node"]
+			var sf8: SpriteFrames = s8.sprite_frames
+			var nama8 := "%s/%s" % [str(mm8["id"]), str(n8["name"])]
+			if not sf8.has_animation("idle_down"):
+				anim_gagal.append(nama8 + " tanpa animasi")
+				continue
+			var nf8: int = sf8.get_frame_count("idle_down")
+			if nf8 < 2:
+				anim_gagal.append(nama8 + " cuma 1 gambar")
+				continue
+			if not s8.is_playing():
+				anim_gagal.append(nama8 + " tidak berjalan")
+			var sz8: Vector2 = sf8.get_frame_texture("idle_down", 0).get_size()
+			for k8 in range(nf8):
+				if sf8.get_frame_texture("idle_down", k8).get_size() != sz8:
+					anim_gagal.append(nama8 + " ukuran gambar beda")
+					break
+			var a8: AtlasTexture = sf8.get_frame_texture("idle_down", 0)
+			var b8: AtlasTexture = sf8.get_frame_texture("idle_down", 1)
+			if a8.region == b8.region:
+				anim_gagal.append(nama8 + " gambar kembar")
+	check(anim_gagal.is_empty(), "animasi NPC utuh dan berjalan%s"
+		% ("" if anim_gagal.is_empty() else " (gagal: %s)" % str(anim_gagal)))
+
+	# 18. portal tiap peta ada dan status kuncinya sesuai progres
+	var portal_gagal: Array = []
+	for mm9 in Content.MAPS:
+		var id9 := str(mm9["id"])
+		main._start_play(id9)
+		await wait(0.3)
+		main.dialog.visible = false
+		var w9 = main._world
+		if w9.portal_node == null:
+			portal_gagal.append(id9 + " tanpa portal")
+		elif bool(w9.portal_node.locked) == Game.is_map_cleared(id9):
+			portal_gagal.append(id9 + " status kunci keliru")
+	check(portal_gagal.is_empty(), "portal ada dan status kuncinya sesuai%s"
+		% ("" if portal_gagal.is_empty() else " (gagal: %s)" % str(portal_gagal)))
+
+## Memeriksa penempatan gambar NPC: kaki harus menyentuh titik pijaknya,
+## nama tepat di bawah kaki, tanda seru di tengah atas kepala, dan NPC
+## tidak berdiri di atas dinding atau air.
+func _npc_visual() -> void:
+	var kaki_gagal: Array = []
+	var nama_gagal: Array = []
+	var tanda_gagal: Array = []
+	var pijak_gagal: Array = []
+	var tinggi: Array = []
+	var label_gagal: Array = []
+	var kanopi_gagal: Array = []
+	for mm in Content.MAPS:
+		main._start_play(str(mm["id"]))
+		await wait(0.45)
+		main.dialog.visible = false
+		var w = main._world
+		var solid: Array = w.meta.get("solid", [])
+		var tiles: Array = Content.npcs_of(Content.map_by_id(str(mm["id"])))
+		for nn in w.npcs:
+			var spr: AnimatedSprite2D = nn["node"]
+			var fs: Vector2 = spr.sprite_frames.get_frame_texture("idle_down", 0).get_size()
+			var rect: Rect2 = spr.get_global_transform() * Rect2(-fs * 0.5 + spr.offset, fs)
+			var kaki_rect := rect.position.y + rect.size.y
+			tinggi.append(round(rect.size.y))
+			var kaki := kaki_rect - spr.position.y
+			if abs(kaki) > 4.0:
+				kaki_gagal.append("%s/%s (kaki %.0f)" % [str(mm["id"]), str(nn["name"]), kaki])
+			var pl: Label = null
+			for p in w._plates:
+				if (p as Label).text == str(nn["name"]):
+					pl = p
+			if pl == null:
+				nama_gagal.append("%s/%s tanpa nama" % [str(mm["id"]), str(nn["name"])])
+			else:
+				var pr: Rect2 = pl.get_global_rect()
+				var jarak := pr.position.y - kaki_rect
+				var tumpang := minf(kaki_rect, pr.position.y + pr.size.y) - maxf(rect.position.y, pr.position.y)
+				if jarak < -1.0 or tumpang > 6.0:
+					nama_gagal.append("%s/%s (jarak %.0f, tumpang %.0f)" % [str(mm["id"]), str(nn["name"]), jarak, tumpang])
+			if nn["mark"] != null:
+				var mk: Label = nn["mark"]
+				var tengah := mk.position.x + mk.size.x * 0.5
+				if abs(tengah - spr.position.x) > mk.size.x * 0.5 + 2.0 or mk.position.y + mk.size.y > rect.position.y + 2.0:
+					tanda_gagal.append("%s/%s" % [str(mm["id"]), str(nn["name"])])
+			# label benda tidak boleh menutupi badan NPC
+			for p2 in w._plates:
+				var l2: Label = p2
+				if l2.text == str(nn["name"]):
+					continue
+				var o2: float = 0.0
+				var lr: Rect2 = l2.get_global_rect()
+				var ix := minf(rect.position.x + rect.size.x, lr.position.x + lr.size.x) - maxf(rect.position.x, lr.position.x)
+				var iy := minf(rect.position.y + rect.size.y, lr.position.y + lr.size.y) - maxf(rect.position.y, lr.position.y)
+				if ix > 0.0 and iy > 0.0:
+					o2 = ix * iy
+				if o2 > 150.0:
+					label_gagal.append("%s/%s tertutup '%s'" % [str(mm["id"]), str(nn["name"]), l2.text])
+			# tidak ada pohon yang menutupi badan NPC
+			for i3 in range((w.prop_fade as Array).size()):
+				var sp3: Sprite2D = w.prop_fade[i3]
+				if sp3.position.y <= spr.position.y:
+					continue
+				var kr: Rect2 = w.prop_rects[i3]
+				var kx := minf(kr.position.x + kr.size.x, rect.position.x + rect.size.x) - maxf(kr.position.x, rect.position.x)
+				var ky := minf(kr.position.y + kr.size.y, rect.position.y + rect.size.y) - maxf(kr.position.y, rect.position.y)
+				if kx > 0.0 and ky > 0.0 and kx * ky > rect.size.x * rect.size.y * 0.2:
+					kanopi_gagal.append("%s/%s" % [str(mm["id"]), str(nn["name"])])
+			# NPC harus berdiri di lantai, bukan di dinding/air
+			for d in tiles:
+				if str(d.get("name", "")) != str(nn["name"]):
+					continue
+				var tx := int(d.get("x", -1))
+				var ty := int(d.get("y", -1))
+				if ty >= 0 and ty < solid.size() and tx >= 0 and tx < (solid[ty] as Array).size():
+					if int((solid[ty] as Array)[tx]) == 1:
+						pijak_gagal.append("%s/%s" % [str(mm["id"]), str(nn["name"])])
+				break
+	check(kaki_gagal.is_empty(), "kaki NPC menyentuh tanah di semua peta%s"
+		% ("" if kaki_gagal.is_empty() else " (gagal: %s)" % str(kaki_gagal)))
+	check(nama_gagal.is_empty(), "nama NPC ada di bawah kaki, tidak menimpa badan%s"
+		% ("" if nama_gagal.is_empty() else " (gagal: %s)" % str(nama_gagal)))
+	check(tanda_gagal.is_empty(), "tanda seru NPC tepat di tengah atas kepala%s"
+		% ("" if tanda_gagal.is_empty() else " (gagal: %s)" % str(tanda_gagal)))
+	check(label_gagal.is_empty(), "label benda tidak menutupi badan NPC%s"
+		% ("" if label_gagal.is_empty() else " (gagal: %s)" % str(label_gagal)))
+	check(kanopi_gagal.is_empty(), "tidak ada NPC tertutup kanopi pohon%s"
+		% ("" if kanopi_gagal.is_empty() else " (gagal: %s)" % str(kanopi_gagal)))
+	check(pijak_gagal.is_empty(), "NPC tidak berdiri di dinding atau air%s"
+		% ("" if pijak_gagal.is_empty() else " (gagal: %s)" % str(pijak_gagal)))
+	var tinggi_unik := []
+	for h in tinggi:
+		if not tinggi_unik.has(h):
+			tinggi_unik.append(h)
+	check(tinggi_unik.size() == 1, "tinggi gambar semua NPC seragam (%s px)" % str(tinggi_unik))
+
+## Menyusuri pohon UI dan melaporkan label yang teksnya tidak muat serta
+## kontrol yang keluar dari jendela 1280x720.
+func _ui_issues(root: Node, label: String) -> Array:
+	var out: Array = []
+	_scan_ui(root, out, label)
+	return out
+
+func _scan_ui(n: Node, out: Array, label: String) -> void:
+	if n is CanvasItem and not (n as CanvasItem).visible:
+		return
+	if n == main._world:
+		return  # label benda di peta memakai koordinat dunia, bukan layar
+	if n is ScrollContainer:
+		# Isi wadah gulir boleh lebih panjang ke bawah, tapi tidak boleh lebih
+		# lebar dari jendelanya: tanpa gulir mendatar, teks kanan akan terpotong.
+		var sc := n as ScrollContainer
+		if sc.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED:
+			for ch2 in sc.get_children():
+				if ch2 is Control:
+					var lebar := (ch2 as Control).get_combined_minimum_size().x
+					if lebar > sc.size.x + 1.0:
+						out.append("%s: isi gulir lebih lebar dari wadah '%s' (%.0f > %.0f)"
+							% [label, (ch2 as Control).name, lebar, sc.size.x])
+		return
+	if n is Control:
+		var c := n as Control
+		var r := c.get_global_rect()
+		if r.size.x > 1.0 and (r.position.x < -3.0 or r.position.y < -3.0
+				or r.end.x > 1283.0 or r.end.y > 723.0):
+			out.append("%s: %s keluar layar (%.0f,%.0f)-(%.0f,%.0f)"
+				% [label, c.name, r.position.x, r.position.y, r.end.x, r.end.y])
+		if c is Label:
+			var lb := c as Label
+			if lb.autowrap_mode == TextServer.AUTOWRAP_OFF and lb.text.strip_edges() != "":
+				var f := lb.get_theme_font("font")
+				var fs := lb.get_theme_font_size("font_size")
+				if f != null:
+					var w: float = f.get_string_size(lb.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+					if w > lb.size.x + 6.0:
+						out.append("%s: label terpotong '%s' (%.0f > %.0f)"
+							% [label, lb.text.substr(0, 26), w, lb.size.x])
+	for ch in n.get_children():
+		_scan_ui(ch, out, label)
+
+func _kumpul_label(n: Node, out: Array) -> void:
+	if n is Label:
+		out.append(n)
+	for ch in n.get_children():
+		_kumpul_label(ch, out)
+
+func _kumpul_tombol(n: Node, out: Array) -> void:
+	if n is Button:
+		out.append(n)
+	for ch in n.get_children():
+		_kumpul_tombol(ch, out)
+
+func _ui_audit() -> void:
+	Game.badges = ["nature", "core", "cipher", "aqua"] as Array[String]
+	var temuan: Array = []
+	# layar judul & peta
+	main._show_title()
+	await wait(0.3)
+	temuan.append_array(_ui_issues(main, "judul"))
+	main._open_maps()
+	await wait(0.3)
+	temuan.append_array(_ui_issues(main, "peta"))
+	# Tombol kartu wilayah harus rata per baris, bukan naik-turun sendiri.
+	var tombol: Array = []
+	_kumpul_tombol(main.map_screen, tombol)
+	var baris := {}
+	for b in tombol:
+		var bb := b as Button
+		if bb.text.begins_with("Masuk") or bb.text.begins_with("Terkunci"):
+			var k := int(round(bb.get_global_rect().end.y))
+			baris[k] = int(baris.get(k, 0)) + 1
+	var rata := baris.size() == 2
+	for k in baris.keys():
+		if int(baris[k]) != 3:
+			rata = false
+	check(rata, "peta: enam tombol kartu rata dalam dua baris (%s)" % str(baris))
+	# dunia + HUD
+	main._start_play("hutan")
+	await wait(0.4)
+	main.dialog.visible = false
+	await wait(0.1)
+	temuan.append_array(_ui_issues(main, "dunia"))
+	# Label nama benda di peta tidak boleh saling menimpa.
+	var tumpang: Array = []
+	for mid2 in ["kota", "hutan", "pabrik", "candi", "danau", "source"]:
+		main._start_play(str(mid2))
+		await wait(0.35)
+		var plates: Array = []
+		_kumpul_label(main._world, plates)
+		for i in range(plates.size()):
+			for j in range(i + 1, plates.size()):
+				var a2 := plates[i] as Label
+				var b2 := plates[j] as Label
+				if a2.text == "?" or b2.text == "?":
+					continue
+				if Rect2(a2.position, a2.size).intersects(Rect2(b2.position, b2.size), false):
+					tumpang.append("%s: '%s' x '%s'" % [str(mid2), a2.text, b2.text])
+	check(tumpang.is_empty(), "label nama benda tidak saling menimpa%s"
+		% ("" if tumpang.is_empty() else " (%s)" % str(tumpang)))
+	# panel tantangan: satu contoh tiap jenis
+	var jenis_uji := [
+		{"m": "kota", "i": 0}, {"m": "hutan", "i": 0}, {"m": "hutan", "i": 1},
+		{"m": "candi", "i": 0}, {"m": "danau", "i": 0}, {"m": "danau", "i": 2},
+	]
+	var tak_muat: Array = []
+	for j in jenis_uji:
+		var mm := Content.map_by_id(str(j["m"]))
+		var chs: Array = mm["challenges"]
+		Game.current_map = str(j["m"])
+		main.puzzle.open(chs[int(j["i"])], int(j["i"]), chs.size())
+		await wait(0.25)
+		temuan.append_array(_ui_issues(main, "tantangan-%s-%d" % [str(j["m"]), int(j["i"])]))
+		var tinggi_isi: float = main.puzzle._body.get_combined_minimum_size().y
+		var tinggi_wadah: float = main.puzzle._body_scroll.size.y
+		if tinggi_isi > tinggi_wadah + 1.0:
+			tak_muat.append("%s-%d (%.0f > %.0f)" % [str(j["m"]), int(j["i"]), tinggi_isi, tinggi_wadah])
+		main.puzzle._on_close()
+		await wait(0.1)
+	# Seluruh tantangan (bukan hanya enam contoh) juga harus muat tanpa menggulir.
+	Game.items["lensa"] = 3
+	for m3 in Content.MAPS:
+		var chs3: Array = m3["challenges"]
+		Game.current_map = str(m3["id"])
+		for i3 in range(chs3.size()):
+			main.puzzle.open(chs3[i3], i3, chs3.size())
+			await wait(0.12)
+			var ti: float = main.puzzle._body.get_combined_minimum_size().y
+			var tw: float = main.puzzle._body_scroll.size.y
+			if ti > tw + 1.0:
+				tak_muat.append("%s-%d (%.0f > %.0f)" % [str(m3["id"]), i3, ti, tw])
+			main.puzzle._on_close()
+			await wait(0.05)
+	check(tak_muat.is_empty(), "panel tantangan muat tanpa menggulir%s"
+		% ("" if tak_muat.is_empty() else " (%s)" % str(tak_muat)))
+	# panel lain
+	main._start_play("kota")
+	await wait(0.4)
+	main.dialog.visible = false
+	Game.coins = 150
+	main.shop.open()
+	await wait(0.25)
+	temuan.append_array(_ui_issues(main, "toko"))
+	main.shop._on_close()
+	await wait(0.1)
+	main._open_journal(false)
+	await wait(0.25)
+	temuan.append_array(_ui_issues(main, "jurnal"))
+	main.journal._on_close()
+	await wait(0.1)
+	main._open_pause()
+	await wait(0.25)
+	temuan.append_array(_ui_issues(main, "jeda"))
+	main._close_pause()
+	await wait(0.1)
+	main._open_badges()
+	await wait(0.25)
+	temuan.append_array(_ui_issues(main, "badge"))
+	main.badges_screen._on_close()
+	await wait(0.1)
+	main._open_research()
+	await wait(0.25)
+	temuan.append_array(_ui_issues(main, "riset"))
+	main._on_research_back()
+	await wait(0.1)
+	main._open_asesmen()
+	await wait(0.3)
+	temuan.append_array(_ui_issues(main, "asesmen"))
+	main.asesmen.visible = false
+	main.state = "playing"
+	await wait(0.1)
+	main._show_ending()
+	await wait(0.3)
+	temuan.append_array(_ui_issues(main, "ending"))
+	var ringkas := ""
+	for i in mini(40, temuan.size()):
+		ringkas += "\n      " + str(temuan[i])
+	check(temuan.is_empty(), "tata letak: tidak ada teks terpotong / elemen keluar layar%s"
+		% ("" if temuan.is_empty() else " (%d temuan)%s" % [temuan.size(), ringkas]))

@@ -263,6 +263,20 @@ static func button(text: String, size: int = 17, accent: Color = ACCENT) -> Butt
 	b.add_theme_constant_override("outline_size", 0)
 	return b
 
+## Tombol ringkas untuk baris daftar (mis. toko): margin tekstur lebih kecil
+## supaya tinggi tombol tidak memakan tinggi baris.
+static func small_button(text: String, size: int = 13) -> Button:
+	var b := button(text, size)
+	b.add_theme_stylebox_override("normal", tex_style(btn_tex(), 8))
+	b.add_theme_stylebox_override("hover", tex_style(btn_tex("_hover"), 8))
+	b.add_theme_stylebox_override("pressed", tex_style(btn_tex("_press"), 8))
+	b.add_theme_stylebox_override("disabled", tex_style(btn_tex("_press"), 8))
+	var focus := tex_style(btn_tex("_hover"), 8)
+	focus.draw_center = false
+	b.add_theme_stylebox_override("focus", focus)
+	b.custom_minimum_size.y = 30
+	return b
+
 ## Tombol utama: daun hijau, teks krem terang.
 static func primary_button(text: String, color: Color = GOLD, size: int = 18) -> Button:
 	var b := button(text, size, color)
@@ -294,6 +308,17 @@ static func choice_button(text: String, size: int = 18) -> Button:
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	return b
 
+## Pilihan jawaban versi ringkas: padding kertas lebih kecil supaya daftar
+## langkah yang panjang tetap muat tanpa menggulir.
+static func small_choice_button(text: String, size: int = 15) -> Button:
+	var b := choice_button(text, size)
+	b.add_theme_stylebox_override("normal", parchment_style(14, 8))
+	b.add_theme_stylebox_override("hover", parchment_style(14, 8))
+	b.add_theme_stylebox_override("pressed", parchment_style(14, 8))
+	b.add_theme_stylebox_override("disabled", parchment_style(14, 8))
+	b.custom_minimum_size.y = 36
+	return b
+
 ## Dropdown dengan warna teks yang terbaca (bukan gelap di atas gelap).
 static func dropdown(width: float = 380) -> OptionButton:
 	var ob := OptionButton.new()
@@ -309,6 +334,15 @@ static func dropdown(width: float = 380) -> OptionButton:
 	ob.add_theme_stylebox_override("pressed", tex_style(btn_tex("_press"), 18))
 	ob.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	ob.custom_minimum_size = Vector2(width, 42)
+	return ob
+
+## Dropdown ringkas untuk baris padat (mis. klausa SQL): margin tekstur 8 px.
+static func small_dropdown(width: float = 380) -> OptionButton:
+	var ob := dropdown(width)
+	ob.add_theme_stylebox_override("normal", tex_style(btn_tex(), 8))
+	ob.add_theme_stylebox_override("hover", tex_style(btn_tex("_hover"), 8))
+	ob.add_theme_stylebox_override("pressed", tex_style(btn_tex("_press"), 8))
+	ob.custom_minimum_size = Vector2(width, 34)
 	return ob
 
 ## Kartu berisi konten. `paper` = kertas terang, selain itu papan hijau.

@@ -128,8 +128,9 @@ func _ready() -> void:
 	gt2.height = 512
 	glow.texture = gt2
 	glow.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	glow.offset_left = 150
-	glow.offset_right = 662
+	# Tepi kanan dijaga di dalam layar (1280) supaya tidak ada elemen keluar jendela.
+	glow.offset_left = 128
+	glow.offset_right = 640
 	glow.offset_top = -300
 	glow.offset_bottom = 212
 	glow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

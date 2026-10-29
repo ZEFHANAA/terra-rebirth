@@ -52,7 +52,7 @@ func _ready() -> void:
 
 	root.add_child(UiKit.spacer(2))
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 492)
+	scroll.custom_minimum_size = Vector2(0, 470)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
@@ -90,8 +90,8 @@ func refresh() -> void:
 func _row(item_id: String, it: Dictionary) -> Control:
 	var box := PanelContainer.new()
 	var sb := UiKit.panel_style(UiKit.PANEL_2, UiKit.BORDER, 10, 2, false)
-	sb.content_margin_top = 6
-	sb.content_margin_bottom = 6
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
 	box.add_theme_stylebox_override("panel", sb)
 	var h := UiKit.hbox(12)
 	box.add_child(h)
@@ -103,18 +103,19 @@ func _row(item_id: String, it: Dictionary) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(info)
 	info.add_child(UiKit.label(str(it["name"]) + ("  (dimiliki)" if dimiliki else ""),
-		14, UiKit.ACCENT if dimiliki else UiKit.TEXT))
+		13, UiKit.ACCENT if dimiliki else UiKit.TEXT))
 	var ket := str(it["desc"])
 	if not komponen:
 		ket += " · dimiliki: %d" % Game.item_count(item_id)
-	info.add_child(UiKit.label(ket, 11, UiKit.MUTED, 340))
+	info.add_child(UiKit.label(ket, 10, UiKit.MUTED, 430))
 
-	var right := UiKit.vbox(4)
+	var right := UiKit.vbox(2)
 	right.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_child(right)
-	right.add_child(UiKit.label("%d uang" % int(it["price"]), 14, UiKit.GOLD))
+	right.add_child(UiKit.label("%d uang" % int(it["price"]), 13, UiKit.GOLD))
 
-	var btn := UiKit.button("Dimiliki" if dimiliki else "Beli", 14)
+	var btn := UiKit.small_button("Dimiliki" if dimiliki else "Beli", 12)
+	btn.custom_minimum_size.x = 92
 	btn.disabled = dimiliki or not Game.can_afford(item_id)
 	btn.pressed.connect(func(): _buy(item_id))
 	right.add_child(btn)
@@ -128,7 +129,7 @@ func _buy(item_id: String) -> void:
 			_note.text = "%s dibeli. Komponen perangkat: %d/%d." % [
 				str(it["name"]), Game.component_count(), Game.COMPONENT_TOTAL]
 		else:
-			_note.text = "Kau membeli %s. Buka tantangan lalu tekan tombol Pakai Lensa." % str(it["name"])
+			_note.text = "Kamu membeli %s. Buka tantangan lalu tekan tombol Pakai Lensa." % str(it["name"])
 		_note.add_theme_color_override("font_color", UiKit.ACCENT)
 	else:
 		Game.sfx("sfx_err")

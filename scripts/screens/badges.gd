@@ -73,7 +73,12 @@ func _ready() -> void:
 	_grid.columns = 2
 	_grid.add_theme_constant_override("h_separation", 16)
 	_grid.add_theme_constant_override("v_separation", 14)
-	root.add_child(_grid)
+	# Kisi badge ditaruh di tengah sisa layar supaya tidak menumpuk di atas
+	# dan menyisakan separuh layar kosong.
+	var tengah := CenterContainer.new()
+	tengah.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(tengah)
+	tengah.add_child(_grid)
 
 	root.add_child(UiKit.label(
 		"Badge diberikan setelah seluruh tantangan satu wilayah selesai. "

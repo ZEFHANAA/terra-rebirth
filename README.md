@@ -105,7 +105,7 @@ Permainan **tidak membuka dialog atau soal secara otomatis**. Pemain masuk ke pe
 1. **Kota Unggul** (Map 1, hub & tutorial) — 4 NPC:
    - **Kepala Kota** (tanda `!`) memberi tugas dan membuka 2 tantangan pengantar.
    - **Penjaga Gerbang** menjelaskan badge yang harus dimiliki sebelum portal terbuka.
-   - **Pedagang** menjual 5 barang: **Lensa Analisis** (20 uang, sekali pakai untuk membuka petunjuk) dan **4 komponen perangkat IoT** untuk Danau Citra (sensor pH air, papan rangkaian & kabel jumper, mikrokontroler ber-WiFi, sumber daya).
+   - **Pedagang** menjual 5 barang: **Lensa Analisis** (20 uang, sekali pakai untuk membuka petunjuk; berlaku untuk semua jenis tantangan dan tidak pernah terpotong bila soal itu belum punya petunjuk) dan **4 komponen perangkat IoT** untuk Danau Citra (sensor pH air, papan rangkaian & kabel jumper, mikrokontroler ber-WiFi, sumber daya).
    - **Peneliti Lingkungan** memberi konteks cerita (danau tercemar).
      Map 1 **tidak memberi badge**; menyelesaikan kedua quest pengantar cukup untuk membuka Map 2.
 2. **Hutan Pengetahuan** (Map 2, Basis Data) — 10 tantangan: 3 misi puzzle, 2 puzzle acak dari bank, dan **5 soal acak** dari bank Basis Data → **Badge Nature**.
@@ -137,14 +137,15 @@ panel soal/dialog terbuka — jadi pemain tidak perlu menebak ke mana harus berj
 - Badge **hanya** diberikan setelah **seluruh** quest pada suatu map selesai, termasuk tantangan akhir — bukan setiap jawaban benar.
 - Map berikutnya terbuka **hanya bila badge map sebelumnya sudah dimiliki**. Tidak ada syarat level.
 
-**Enam tipe tantangan:**
+**Tujuh tipe tantangan:**
 
 - `mcq` — pilihan ganda konsep (tutorial, soal bank, dan final).
 - `build` — menyusun query SQL lewat dropdown (SELECT / FROM / JOIN / WHERE / ORDER BY).
 - `order` — menyusun urutan langkah (penjadwalan proses, alur data IoT).
 - `fill` — mengisi bagian kosong (istilah atau potongan kode) lewat pilihan yang disediakan.
 - `cipher` — memutar cakram Caesar untuk membaca pesan.
-- `craft` — membeli 4 komponen di toko Kota Unggul lalu merakit perangkat IoT (Danau Citra).
+- `craft` — memilih komponen yang benar untuk dibawa dari toko Kota Unggul (Danau Citra).
+- `wire` — merakit perangkat IoT dengan menyambung kabel antar pin komponen yang sudah dibeli (Danau Citra, fatal).
 
 ---
 
@@ -179,12 +180,12 @@ data/puzzle_bank.gd      40 puzzle acak (10 per materi: order & fill)
 scripts/game_state.gd    autoload: badge, progres, nyawa, simpan/muat, setelan, penilaian post-test & SUS, rekap
 scripts/main.gd          orkestrator layar + input + transisi
 scripts/player.gd        CharacterBody2D + AnimatedSprite2D 4 arah
-scripts/world.gd         membangun peta (collision, 4 NPC, objek pencarian, portal, penanda tujuan)
+scripts/world.gd         membangun peta (collision, NPC pengajar, objek pencarian, portal, penanda tujuan)
 scripts/portal.gd        gerbang antar wilayah (terkunci/terbuka)
 scripts/ui/              ui_kit, hud, dialog_box, puzzle_panel, badge_popup, shop_panel, asesmen, pause_menu
 scripts/screens/         title, map_select, research, journal, badges, ending
-scripts/autotest.gd      uji integrasi otomatis (248 cek)
-scripts/audit_konten.gd  audit isi konten: kunci jawaban, polaritas SUS, sandi, keterjangkauan peta, pemicu quest, toko & komponen (1512 cek)
+scripts/autotest.gd      uji integrasi otomatis (284 cek)
+scripts/audit_konten.gd  audit isi konten: kunci jawaban, polaritas SUS, sandi, keterjangkauan peta, pemicu quest, toko & komponen, NPC pengajar, petunjuk Lensa (1686 cek)
 tools/assets_gen.py      generator sprite, NPC, badge, panel, latar judul
 tools/maps_gen.py        generator 6 peta (Kota 60x36, lainnya 40x22) + JSON collision
 tools/gen_audio.py       sintesis WAV: 2 musik latar + 6 efek suara (tanpa aset pihak ketiga)
@@ -199,13 +200,13 @@ build/web/               hasil ekspor web (siap disajikan lewat server lokal)
 ## 6. Uji otomatis
 
 ```bash
-godot --headless --path . res://scenes/AutoTest.tscn        # alur permainan + asesmen + UI (248 cek)
-godot --headless --script res://scripts/audit_konten.gd     # audit isi konten (1512 cek)
+godot --headless --path . res://scenes/AutoTest.tscn        # alur permainan + asesmen + UI + tata letak + NPC (284 cek)
+godot --headless --script res://scripts/audit_konten.gd     # audit isi konten (1686 cek)
 ```
 
-Menguji: eksplorasi objek → NPC mentor + simulasi → puzzle (build/order/fill/cipher/craft) → aturan badge (satu quest belum memberi badge) → gating antar-map → nyawa & pengulangan wilayah → uang & toko → boss → post-test & SUS (skor, rekaman, CSV) → ringkasan agregat Mode Riset → keputusan ending → simpan/muat & setelan → jurnal, penanda tujuan, koleksi badge, layar jeda → kasus batas (batal asesmen, post-test tanpa SUS, kode peserta ganda, durasi lintas sesi, quest tanpa pemicu).
+Menguji: eksplorasi objek → NPC mentor + simulasi → puzzle (build/order/fill/cipher/craft/wire) → aturan badge (satu quest belum memberi badge) → gating antar-map → nyawa & pengulangan wilayah → uang & toko → boss → post-test & SUS (skor, rekaman, CSV) → ringkasan agregat Mode Riset → keputusan ending → simpan/muat & setelan → jurnal, penanda tujuan, koleksi badge, layar jeda → kasus batas (batal asesmen, post-test tanpa SUS, kode peserta ganda, durasi lintas sesi, quest tanpa pemicu).
 
-Hasil terakhir: **248 cek, 0 gagal**; audit konten **1512 cek, 0 gagal**.
+Hasil terakhir: **284 cek, 0 gagal**; audit konten **1686 cek, 0 gagal**.
 
 ---
 

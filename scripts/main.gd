@@ -245,6 +245,43 @@ func _run_demo(kind: String) -> void:
 			_start_play("hutan")
 			await get_tree().create_timer(0.3).timeout
 			badge_popup.show_badge("nature", "Nature Data Crystal")
+		"order":
+			Game.badges = ["nature", "core", "cipher"] as Array[String]
+			_start_play("danau")
+			await get_tree().create_timer(0.4).timeout
+			dialog.visible = false
+			var m5 := Content.map_by_id("danau")
+			var chs5: Array = m5["challenges"]
+			puzzle.open(chs5[1], 1, chs5.size())
+		"fill":
+			Game.badges = ["nature", "core"] as Array[String]
+			_start_play("hutan")
+			await get_tree().create_timer(0.4).timeout
+			dialog.visible = false
+			puzzle.open({
+				"id": "demo-fill", "title": "Melengkapi Query", "type": "fill",
+				"prompt": "Lengkapi perintah SQL berikut agar baris baru masuk ke tabel sumber_air.",
+				"code": "___ INTO sumber_air (nama, ph) VALUES ('Mata Air 7', 6.1)",
+				"accept": ["insert", "insert into"],
+				"explain": "INSERT INTO menambahkan baris baru ke tabel.",
+			}, 0, 1)
+		"shop":
+			_start_play("kota")
+			await get_tree().create_timer(0.4).timeout
+			dialog.visible = false
+			Game.coins = 120
+			shop.open()
+		"lensa":
+			Game.badges = ["nature", "core", "cipher"] as Array[String]
+			_start_play("danau")
+			await get_tree().create_timer(0.4).timeout
+			dialog.visible = false
+			Game.items["lensa"] = 1
+			var m4 := Content.map_by_id("danau")
+			var chs4: Array = m4["challenges"]
+			puzzle.open(chs4[1], 1, chs4.size())
+			await get_tree().create_timer(0.3).timeout
+			puzzle._on_lensa()
 		"pause":
 			_start_play("hutan")
 			await get_tree().create_timer(0.5).timeout
@@ -416,6 +453,13 @@ func _run_demo(kind: String) -> void:
 			dialog.visible = false
 			var md := Content.map_by_id("danau")
 			puzzle.open(md["challenges"][2], 2, (md["challenges"] as Array).size())
+			# Tangkapan layar puzzle kabel: pasang dua kabel lebih dulu supaya
+			# garis sambungannya terlihat (bukan skor, hanya demo).
+			if str(puzzle._c.get("type", "")) == "wire":
+				await get_tree().create_timer(0.4).timeout
+				for l in (puzzle._c.get("links", []) as Array).slice(0, 2):
+					puzzle._on_wire_pin(str((l as Array)[0]))
+					puzzle._on_wire_pin(str((l as Array)[1]))
 		"boss":
 			Game.badges = ["nature", "core", "cipher", "aqua"] as Array[String]
 			_start_play("source")
@@ -839,6 +883,16 @@ func _demo_solve_current() -> void:
 						break
 				await _dw(0.15)
 			await _demo_press_action("Periksa Rakit")
+		"wire":
+			# Sambungkan kabel sesuai daftar sambungan benar, lalu nyalakan.
+			for l in puzzle._c.get("links", []):
+				var pa: Button = puzzle._wire_pins[str((l as Array)[0])]
+				var pb: Button = puzzle._wire_pins[str((l as Array)[1])]
+				await _demo_click(pa)
+				await _dw(0.25)
+				await _demo_click(pb)
+				await _dw(0.3)
+			await _demo_press_action("Nyalakan Perangkat")
 		"cipher":
 			var sh := int(puzzle._c.get("answer_shift", 0))
 			var sl := _demo_find_slider(puzzle._body)
@@ -1408,7 +1462,7 @@ func _intro_lines(m: Dictionary) -> Array:
 		return m["intro"]
 	if Game.all_components():
 		return [
-			"Kau sudah membawa keempat komponen perangkat dari toko Kota Unggul — lengkap.",
+			"Kamu sudah membawa keempat komponen perangkat dari toko Kota Unggul — lengkap.",
 			"Pasang semuanya di tantangan merakit: papan rangkaian sebagai dasar, sensor pH sebagai masukan, mikrokontroler sebagai pengolah data, dan sumber daya agar perangkat menyala.",
 			"Setelah perangkat hidup, kita baca data sensor lalu kirimkan ke dasbor."
 		]
@@ -1454,7 +1508,7 @@ func _resolve_object() -> void:
 		_open_next_bank_challenge()
 	elif o.has("challenge"):
 		var challenge := _challenge_by_id(str(o["challenge"]))
-		if str(challenge.get("type", "")) == "craft" and not Game.all_components():
+		if str(challenge.get("type", "")) in ["craft", "wire"] and not Game.all_components():
 			_toast_msg("Komponen belum lengkap — beli di toko Kota Unggul.", 3.0)
 			return
 		_open_challenge(str(o["challenge"]))
@@ -1518,7 +1572,7 @@ func _gate_lines() -> Array:
 	if Game.map_unlocked(nxt):
 		var nm := Content.map_by_id(nxt)
 		return [
-			"Kau memenuhi syarat. Gerbang menuju %s sudah terbuka." % str(nm.get("name", "")),
+			"Kamu memenuhi syarat. Gerbang menuju %s sudah terbuka." % str(nm.get("name", "")),
 			"Jalan ke tepi peta, di sana ada portal bercahaya."
 		]
 	return [

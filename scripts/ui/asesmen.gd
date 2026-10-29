@@ -102,7 +102,7 @@ func _page_intro() -> void:
 	_box.add_child(UiKit.title("POST-TEST & KUESIONER SUS", 26, UiKit.TEXT))
 	_box.add_child(UiKit.rule())
 	_box.add_child(UiKit.label(
-		"Kau telah menyelesaikan seluruh wilayah. Sekarang kerjakan post-test 20 soal " \
+		"Kamu telah menyelesaikan seluruh wilayah. Sekarang kerjakan post-test 20 soal " \
 		+ "(5 soal untuk setiap materi) lalu isi kuesioner SUS 10 pernyataan. " \
 		+ "Jawaban tidak memengaruhi nilai mata kuliah apa pun.", 15, UiKit.MUTED, PANEL_W - 60))
 	_box.add_child(UiKit.spacer(6))

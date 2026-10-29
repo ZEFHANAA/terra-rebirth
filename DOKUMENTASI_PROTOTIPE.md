@@ -25,7 +25,7 @@ Dokumen ini menjelaskan prototipe yang dibangun dan bagaimana ia menjawab poin-p
 | Hutan Pengetahuan (Map 2) | Basis Data → Badge Nature | Kunci Tabel; Relasi Satu ke Banyak; Menyusun Query | build (SQL), order, build (SQL) |
 | Pabrik Limbah (Map 3) | Sistem Operasi → Badge Core | Keadaan Proses; Urutan Penjadwalan; Memilih Penjadwalan; Sumber Daya Bersama | order, order, order, order |
 | Candi Kuno (Map 4) | Kriptografi → Badge Cipher | Mengenali Sandi; Memutar Cakram; Analisis Frekuensi; Memilih Metode; Jejak Hash | cipher, cipher, order, build, cipher |
-| Danau Citra (Map 5) | IoT → Badge Aqua | Memilih Komponen; Fungsi Daya dan Pengolahan; Merakit Perangkat; Alur Data ke Dasbor | craft, order, **craft**, order |
+| Danau Citra (Map 5) | IoT → Badge Aqua | Memilih Komponen; Fungsi Daya dan Pengolahan; Merakit Perangkat; Alur Data ke Dasbor | craft, order, **wire**, order |
 | The Source (Map 6) | Integrasi 4 bidang, tanpa badge | Ujian Data; Ujian Sandi; Ujian Sistem; Ujian Perangkat | mcq (boss HP 4) |
 
 Wilayah materi (Map 2–Map 5) masing-masing menambah **5 soal pilihan ganda dari bank soal** yang
@@ -223,7 +223,7 @@ Main.tscn (Control)
     │   └── portal.gd
     ├── hud.gd
     ├── dialog_box.gd
-    ├── puzzle_panel.gd   mcq | build | order | cipher | craft + bar HP boss
+    ├── puzzle_panel.gd   mcq | build | order | fill | cipher | craft | wire + bar HP boss
     ├── shop_panel.gd     toko (uang)
     └── badge_popup.gd
 Autoload: Game (game_state.gd) — badge, progres, simpan/muat, rekap peserta, audio
@@ -236,7 +236,7 @@ Seluruh konten berada di `data/content.gd`, terpisah dari logika. Menambah soal 
 
 ## 7. Hasil uji fungsional
 
-Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) — **248 cek, 0 gagal**:
+Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) — **284 cek, 0 gagal**:
 
 | No | Yang diuji | Hasil |
 |---|---|---|
@@ -268,6 +268,16 @@ Uji integrasi otomatis (`godot --headless --path . res://scenes/AutoTest.tscn`) 
 | 26 | Ringkasan Mode Riset: rata-rata post-test, ketuntasan (n/N dan %), rata-rata SUS (hanya yang mengisi), rata-rata durasi, rata-rata benar per materi, dan data kosong tidak error | OK |
 | 27 | Layar judul bersih: tidak ada tombol Mode Riset, tidak ada baris kontrol/identitas/kata prototipe, dan Ctrl+R dari judul membuka Mode Riset lalu kembali ke judul | OK |
 | 28 | Layar jeda memuat daftar kontrol (WASD/panah, E, J, M, Esc), daftar itu disembunyikan di layar pengaturan, dan HUD hilang saat jeda lalu muncul lagi setelah ditutup | OK |
+| 29 | Puzzle kabel IoT (wire): papan menampilkan 6 komponen bergambar (4 asli + 2 pengganggu, tanpa pembeda warna), kertas soal besar disembunyikan, penghitung kabel dan lampu perangkat tampil serta bertambah, klik dua pin memasang kabel, kurang kabel hanya diperingatkan tanpa hukuman, klik ulang pasangan atau tombol cabut melepas kabel, salah sambung menggagalkan wilayah (fatal), dan sambungan benar dalam urutan klik terbalik menyalakan perangkat | OK |
+| 30 | Lensa Analisis: keenam jenis tantangan (pilihan ganda, SQL, urutan, sandi, rakit komponen, kabel IoT) memberi satu kalimat petunjuk, isi rumpang punya petunjuk dari kata jawaban, menekan Lensa tanpa persediaan tidak memotong apa pun, Lensa hanya terpakai saat petunjuknya muncul, dan soal tanpa bahan petunjuk tidak memotong Lensa | OK |
+| 31 | NPC pengajar: setiap wilayah punya NPC, Kota Unggul tepat 4, nama unik, tiap NPC punya cerita sendiri, aksi yang dipanggil dikenal mesin dialog, dan nama yang disebut di dialog benar-benar ada di peta | OK |
+| 32 | Audit tata letak: tidak ada teks terpotong, tidak ada kontrol keluar jendela 1280×720, isi gulir tidak lebih lebar dari wadahnya, enam tombol kartu peta rata 2 baris × 3, label benda/NPC di enam peta tidak saling menimpa, dan seluruh 50 panel tantangan muat tanpa menggulir | OK |
+| 33 | Tampilan NPC di enam peta: tinggi gambar seragam, kaki menyentuh titik pijak, nama tepat di bawah kaki, tanda seru di tengah atas kepala, tidak ada label benda yang menutupi badan, tidak berdiri di dinding/air, dan tidak tertutup kanopi pohon | OK |
+| 34 | Pohon di depan pemain memudar (tembus pandang) sehingga karakter tidak hilang di balik daun | OK |
+| 35 | Benda yang dicari (papan, buku, terminal) tidak tertutup kanopi pohon di peta mana pun | OK |
+| 36 | Urutan gambar (siapa menimpa siapa): titik urut seluruh aktor — NPC, benda, dan pohon — berada tepat di kakinya, sehingga pemain yang lewat di depan benar-benar tergambar di depan | OK |
+| 37 | Animasi NPC: setiap NPC punya minimal dua gambar, ukurannya sama, gambarnya tidak kembar, dan animasinya benar-benar diputar | OK |
+| 38 | Portal: setiap peta punya portal dan status kuncinya sesuai kemajuan; tampilan terkunci (bergembok, cahaya redup) berbeda jelas dari terbuka (bercahaya, berkilau) — status diuji otomatis, rupa diperiksa dari tangkapan layar | OK |
 
 Sepuluh kasus batas diuji khusus karena paling mudah rusak saat konten direvisi:
 
@@ -282,11 +292,11 @@ Sepuluh kasus batas diuji khusus karena paling mudah rusak saat konten direvisi:
 9. **Berkas rekap rusak** — dibaca sebagai daftar kosong, game tetap berjalan.
 10. **Peserta baru** — `reset` mengosongkan kode peserta agar data peserta sebelumnya tidak tertimpa.
 
-Audit isi konten (`godot --headless --script res://scripts/audit_konten.gd`) — **1512 cek, 0 gagal**: struktur 6 peta, 42 tantangan (puzzle konsep + 5 soal bank per wilayah materi), bank soal 200 butir (50 per materi: id unik, 4 opsi unik, kunci valid, pembahasan, sebaran kunci), undian post-test 20 soal (5 per materi, stabil untuk peserta yang sama, berbeda antar peserta), aturan 3 nyawa per wilayah, kelengkapan kunci jawaban tiap tantangan, tipe tantangan (`mcq`/`build`/`order`/`cipher`/`craft`/`fill`) beserta data yang dibutuhkan tiap tipe, 20 soal post-test (sebaran kunci A/B/C/D = 5/5/5/5, tiap kunci menunjuk opsi yang valid), 10 butir SUS (polaritas bergantian positif–negatif), sandi Caesar (ciphertext digeser 3 menghasilkan kata yang diharapkan), keterjangkauan seluruh NPC/objek/portal dari titik awal tiap peta, keberadaan seluruh berkas aset (tilemap, sprite NPC, ikon badge), rujukan silang objek → tantangan dan badge → HUD, serta aturan toko: 4 komponen perangkat, harga, dan uang yang tersedia.
+Audit isi konten (`godot --headless --script res://scripts/audit_konten.gd`) — **1686 cek, 0 gagal**: struktur 6 peta, 50 tantangan (puzzle konsep + 5 soal bank per wilayah materi), bank soal 200 butir (50 per materi: id unik, 4 opsi unik, kunci valid, pembahasan, sebaran kunci), undian post-test 20 soal (5 per materi, stabil untuk peserta yang sama, berbeda antar peserta), aturan 3 nyawa per wilayah, kelengkapan kunci jawaban tiap tantangan, tipe tantangan (`mcq`/`build`/`order`/`cipher`/`craft`/`wire`/`fill`) beserta data yang dibutuhkan tiap tipe, 20 soal post-test (sebaran kunci A/B/C/D = 5/5/5/5, tiap kunci menunjuk opsi yang valid), 10 butir SUS (polaritas bergantian positif–negatif), sandi Caesar (ciphertext digeser 3 menghasilkan kata yang diharapkan), keterjangkauan seluruh NPC/objek/portal dari titik awal tiap peta, keberadaan seluruh berkas aset (tilemap, sprite NPC, ikon badge), rujukan silang objek → tantangan dan badge → HUD, serta aturan toko: 4 komponen perangkat, harga, dan uang yang tersedia; ditambah pemeriksaan 19 NPC pengajar (tiap wilayah punya NPC, Kota Unggul tepat 4, cerita tiap NPC tidak kosong dan tidak kembar, aksi dialog dikenal, nama yang disebut ada di peta) dan ketersediaan bahan petunjuk Lensa untuk ketujuh tipe tantangan.
 
 Uji memakai berkas sendiri (`records_autotest.json`, `save_autotest.json`) dan menghapusnya setelah selesai, sehingga menjalankan tes tidak pernah menghapus `records_terra.json` berisi data peserta asli.
 
-Audit yang sama dijalankan juga pada build web hasil ekspor (`godot --headless --main-pack build/web/index.pck --script res://scripts/audit_konten.gd`) — **1512 cek, 0 gagal** — untuk memastikan build yang diunggah benar-benar memuat konten terbaru, bukan versi lama.
+Audit yang sama dijalankan juga pada build web hasil ekspor (`godot --headless --main-pack build/web/index.pck --script res://scripts/audit_konten.gd`) untuk memastikan build yang diunggah benar-benar memuat konten terbaru, bukan versi lama; jumlah ceknya mengikuti versi konten yang diekspor.
 
 Uji manual pada build web: memuat layar judul, klik *Mulai Perjalanan*, berjalan ke NPC, dialog, panel tantangan, dan peta wilayah berjalan tanpa error konsol.
 
@@ -384,7 +394,8 @@ Ketiganya direkam dari build Godot asli lewat Xvfb + ffmpeg (`tools/rekam.sh`), 
 | `puzzle.png` | Tantangan SQL builder | "Tantangan Basis Data: menyusun query" |
 | `order.png` | Tantangan urutan | "Tantangan Sistem Operasi: urutan penjadwalan proses" |
 | `cipher.png` | Tantangan sandi Caesar | "Tantangan Kriptografi: memutar cakram sandi" |
-| `craft.png` | Perakitan perangkat IoT | "Tantangan IoT: merakit perangkat dari komponen yang dibeli di toko" |
+| `craft.png` | Puzzle kabel IoT (wire) | "Tantangan IoT: menyambung kabel antar komponen yang dibeli di toko" |
+| `lensa.png` | Petunjuk Lensa Analisis | "Lensa memberi satu kalimat petunjuk tanpa membocorkan jawaban" |
 | `boss.png` | Tantangan boss The Source | "Tantangan akhir: bar HP boss The Source" |
 | `pilih.png` | Keputusan akhir | "Keputusan pemain yang menentukan ending" |
 | `shop.png` | Toko (uang) | "Pedagang: membeli 4 komponen perangkat (120 uang) dan Lensa Analisis (20 uang)" |

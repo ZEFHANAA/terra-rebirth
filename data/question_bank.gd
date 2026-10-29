@@ -1615,7 +1615,7 @@ const BANK := {
 		},
 		{
 			"id": "kr-35",
-			"prompt": "HTTPS adalah...",
+			"prompt": "Apa yang membedakan HTTPS dari HTTP biasa?",
 			"options": [
 				"Versi HTTP yang lebih cepat karena tanpa enkripsi",
 				"Protokol surel yang terenkripsi ujung ke ujung",

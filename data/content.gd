@@ -68,12 +68,12 @@ const OUTRO := {
 	"hutan": [
 		"Arsip hutan sudah rapi. Titik paling tercemar ada di hilir, tetapi ada yang aneh: semua kejadian tercatat pada detik yang sama.",
 		"Itu bukan kelalaian manusia. Ada yang membanjiri antrean proses di Pabrik Tua sampai catatan waktu sistem tidak lagi dipercaya.",
-		"Bawa badge ini ke Pabrik Tua. Tanpa memahami cara kerja proses, kau tidak akan tahu perintah mana yang menyumbat sistem.",
+		"Bawa badge ini ke Pabrik Tua. Tanpa memahami cara kerja proses, kamu tidak akan tahu perintah mana yang menyumbat sistem.",
 	],
 	"pabrik": [
 		"Pabrik kembali berjalan. Antrean proses normal, dan waktu sistem akurat lagi.",
 		"Tetapi ada satu perintah yang tidak pernah diketik operator. Perintah itu datang sebagai pesan bersandi dari Candi Aksara.",
-		"Buka Candi Aksara dan baca pesannya. Isi pesan itu menentukan ke mana kau harus pergi berikutnya.",
+		"Buka Candi Aksara dan baca pesannya. Isi pesan itu menentukan ke mana kamu harus pergi berikutnya.",
 	],
 	"candi": [
 		"Pesan terbaca: kirim data palsu dari sensor Danau setiap tengah malam.",
@@ -83,7 +83,7 @@ const OUTRO := {
 	"danau": [
 		"Sensor danau sudah bersih. Data yang masuk kembali sesuai kenyataan.",
 		"Dari jejak perangkat, semua perintah palsu berasal dari satu titik di utara: The Source.",
-		"Wilayah terakhir terbuka. Empat konsep sudah kau pegang; sekarang hadapi sumbernya.",
+		"Wilayah terakhir terbuka. Empat konsep sudah kamu pegang; sekarang hadapi sumbernya.",
 	],
 }
 
@@ -159,7 +159,7 @@ const MAPS := [
 				],
 				"dialog": [
 					"Gerbang ini hanya terbuka bagi yang sudah menyelesaikan seluruh quest di wilayahnya. Bukan karena aku pelit, tapi karena wilayah di luar sana tidak bersahabat bagi yang belum siap.",
-					"Aturannya satu: selesaikan semua quest di satu wilayah, maka badge wilayah itu kau dapat. Badge itulah kunci gerbang berikutnya."
+					"Aturannya satu: selesaikan semua quest di satu wilayah, maka badge wilayah itu kamu dapat. Badge itulah kunci gerbang berikutnya."
 				]},
 			{"id": "pedagang", "name": "Pedagang", "role": "Penjual item & komponen", "sprite": "pedagang", "x": 14, "y": 18, "action": "shop",
 				"story": [
@@ -169,7 +169,7 @@ const MAPS := [
 				"dialog": [
 					"Uang? Aku terima. Uang itu bukan badge, jadi ia tidak membuka gerbang apa pun — hanya bisa ditukar barang di sini.",
 					"Aku juga menyimpan komponen perangkat pemantau air: sensor pH, papan rangkaian dan kabel jumper, mikrokontroler ber-WiFi, serta sumber daya. Tanpa keempatnya, perakitan di Danau Citra tidak akan jalan.",
-					"Lensa Analisis paling laris. Sekali pakai, tapi cukup untuk membuka petunjuk saat kau benar-benar buntu."
+					"Lensa Analisis paling laris. Sekali pakai, tapi cukup untuk membuka petunjuk saat kamu benar-benar buntu."
 				]},
 			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti", "x": 40, "y": 22, "action": "info",
 				"story": [
@@ -186,13 +186,13 @@ const MAPS := [
 		"intro": [
 			"Selamat datang di Kota Unggul, pengembara. Dulu kota ini makmur, sampai catatan data, mesin, sandi, dan perangkat pemantau kami rusak satu per satu.",
 			"Kami butuh seseorang yang memahami cara kerja keempatnya. Bukan sekadar menghafal, tetapi mampu memakainya saat keadaan mendesak.",
-			"Aturannya sederhana: selesaikan seluruh quest di satu wilayah, dan kau memperoleh badge wilayah itu. Badge itulah yang membuka jalan berikutnya. Satu quest saja belum cukup."
+			"Aturannya sederhana: selesaikan seluruh quest di satu wilayah, dan kamu memperoleh badge wilayah itu. Badge itulah yang membuka jalan berikutnya. Satu quest saja belum cukup."
 		],
 		"objects": [
 			{"id": "kota-papan", "label": "Papan Pengumuman", "x": 33, "y": 16, "challenge": "kota-1", "icon": "sign",
 				"text": [
 					"Papan ini berisi pengumuman warga: siapa yang boleh masuk wilayah, apa syaratnya, dan bagaimana data disimpan.",
-					"Aturan aksesnya ditulis sebagai baris tabel. Kalau kau bisa membacanya, kau bisa menyusun pengumuman yang benar."
+					"Aturan aksesnya ditulis sebagai baris tabel. Kalau kamu bisa membacanya, kamu bisa menyusun pengumuman yang benar."
 				]},
 			{"id": "kota-buku", "label": "Buku Aturan", "x": 44, "y": 20, "challenge": "kota-2", "icon": "sign",
 				"text": [
@@ -246,7 +246,7 @@ const MAPS := [
 				"challenge": "hutan-p1",
 				"dialog": [
 					"Aku menyalin ulang tabel sumber air setiap pagi. Kolom id_sumber tidak pernah kembar, sedangkan nama dan pH bisa berulang.",
-					"Kalau kau mau tahu di mana kunci relasi diletakkan, tanyakan pada Peneliti Hutan. Dia yang mengajari materi ini."
+					"Kalau kamu mau tahu di mana kunci relasi diletakkan, tanyakan pada Peneliti Hutan. Dia yang mengajari materi ini."
 				]},
 			{"id": "petani", "name": "Petani Hulu", "role": "Saksi pencemaran", "sprite": "pedagang", "x": 31, "y": 14, "action": "info",
 				"story": [
@@ -260,24 +260,24 @@ const MAPS := [
 		],
 		"req_badge": "", "req_clear": "kota",
 		"intro": [
-			"Kau datang tepat waktu. Arsip hutan ini kacau: tabel sumber air terpisah dari tabel lokasi, dan tidak ada yang tahu titik mana yang paling tercemar.",
+			"Kamu datang tepat waktu. Arsip hutan ini kacau: tabel sumber air terpisah dari tabel lokasi, dan tidak ada yang tahu titik mana yang paling tercemar.",
 			"Aku butuh seseorang yang bisa membaca relasi antartabel dan menyusun query. Tanpa itu, kami hanya menebak-nebak."
 		],
 		"objects": [
 			{"id": "hutan-cari-1", "label": "Papan Data", "x": 12, "y": 9, "challenge": "hutan-1",
 				"text": [
 					"Papan ini mencatat sumber air, tetapi kolom lokasinya kosong. Tidak ada yang tahu baris mana milik titik mana.",
-					"Untuk memperbaikinya, kau harus tahu kolom mana yang bisa menjadi primary key dan kolom mana yang menghubungkan kedua tabel."
+					"Untuk memperbaikinya, kamu harus tahu kolom mana yang bisa menjadi primary key dan kolom mana yang menghubungkan kedua tabel."
 				]},
 			{"id": "hutan-cari-2", "label": "Buku Registri", "x": 15, "y": 13, "challenge": "hutan-2",
 				"text": [
 					"Registri ini mencatat daftar lokasi. Satu lokasi bisa memiliki banyak sumber air, tetapi satu sumber air hanya berada di satu lokasi.",
-					"Kalau kau bisa menentukan di tabel mana kunci penghubungnya diletakkan, relasinya bisa dipulihkan."
+					"Kalau kamu bisa menentukan di tabel mana kunci penghubungnya diletakkan, relasinya bisa dipulihkan."
 				]},
 			{"id": "hutan-cari-3", "label": "Catatan Lapangan", "x": 38, "y": 11, "challenge": "hutan-3",
 				"text": [
 					"Catatan ini menyebut dua tabel yang terpisah: sumber air dan lokasi. Tidak ada query yang bisa menggabungkannya.",
-					"Kalau kau bisa menulis query yang menghubungkan keduanya, daftar titik tercemar bisa disusun ulang."
+					"Kalau kamu bisa menulis query yang menghubungkan keduanya, daftar titik tercemar bisa disusun ulang."
 				]},
 			{"id": "hutan-terminal", "label": "Terminal Soal", "bank": true, "x": 21, "y": 17, "icon": "sign",
 				"text": [
@@ -357,7 +357,7 @@ const MAPS := [
 				"challenge": "pabrik-p1",
 				"dialog": [
 					"Antrean proses di lini ini macet sejak pagi. Proses yang selesai I/O tidak kembali ke running, tetapi menunggu di ready.",
-					"Materinya diajarkan Teknisi Mesin. Kalau kau sudah paham, periksa panel dan mesin di lantai pabrik untuk memulai quest."
+					"Materinya diajarkan Teknisi Mesin. Kalau kamu sudah paham, periksa panel dan mesin di lantai pabrik untuk memulai quest."
 				]},
 			{"id": "mandor", "name": "Mandor Pabrik", "role": "Pengawas lantai", "sprite": "pedagang", "x": 29, "y": 15, "action": "info",
 				"story": [
@@ -372,13 +372,13 @@ const MAPS := [
 		"req_badge": "nature", "req_clear": "",
 		"intro": [
 			"Mesinnya tidak rusak. Masalahnya penjadwalan: proses saling menunggu sumber daya yang dipegang proses lain, lalu semuanya berhenti.",
-			"Kalau kau bisa membaca keadaan proses dan mengatur urutannya, mesin ini bisa hidup lagi dalam hitungan menit."
+			"Kalau kamu bisa membaca keadaan proses dan mengatur urutannya, mesin ini bisa hidup lagi dalam hitungan menit."
 		],
 		"objects": [
 			{"id": "pabrik-panel", "label": "Panel Proses", "x": 10, "y": 6, "challenge": "pabrik-1", "icon": "sign",
 				"text": [
 					"Panel menampilkan daftar proses beserta keadaannya. Satu proses berhenti tepat setelah operasi I/O selesai.",
-					"Untuk memulihkannya, kau harus tahu ke keadaan apa proses itu kembali."
+					"Untuk memulihkannya, kamu harus tahu ke keadaan apa proses itu kembali."
 				]},
 			{"id": "pabrik-kendali", "label": "Ruang Kendali", "x": 24, "y": 9, "challenge": "pabrik-2", "icon": "sign",
 				"text": [
@@ -481,7 +481,7 @@ const MAPS := [
 		"req_badge": "core", "req_clear": "",
 		"intro": [
 			"Prasasti ini ditulis oleh leluhur kami. Isinya tidak boleh dibaca sembarang orang, jadi mereka menguncinya dengan sandi.",
-			"Aku hanya bisa memberi petunjuk, bukan jawabannya. Kau harus mengenali polanya sendiri."
+			"Aku hanya bisa memberi petunjuk, bukan jawabannya. Kamu harus mengenali polanya sendiri."
 		],
 		"objects": [
 			{"id": "candi-prasasti", "label": "Prasasti Tua", "x": 12, "y": 6, "challenge": "candi-1", "icon": "sign",
@@ -507,7 +507,7 @@ const MAPS := [
 			{"id": "candi-sumur", "label": "Sumur Pesan", "x": 22, "y": 17, "challenge": "candi-5", "icon": "sign",
 				"text": [
 					"Sumur ini menyimpan pesan terakhir penjaga candi. Sebagian hurufnya hilang.",
-					"Pulihkan pesan itu dengan aturan sandi yang sudah kau pelajari."
+					"Pulihkan pesan itu dengan aturan sandi yang sudah kamu pelajari."
 				]},
 			{"id": "candi-terminal", "label": "Terminal Soal", "bank": true, "x": 24, "y": 18, "icon": "sign",
 				"text": [
@@ -591,13 +591,13 @@ const MAPS := [
 				],
 				"dialog": [
 					"Ikan di danau ini menghilang sejak alat pemantau mati. Kami tidak tahu airnya masih layak atau tidak.",
-					"Kalau kau mau menolong, rakit dulu perangkatnya di meja kerja. Ambil quest dari benda di peta."
+					"Kalau kamu mau menolong, rakit dulu perangkatnya di meja kerja. Ambil quest dari benda di peta."
 				]},
 		],
 		"req_badge": "cipher", "req_clear": "",
 		"intro": [
 			"Danau ini tercemar, dan kami butuh alat pemantau kualitas air. Masalahnya, komponennya tidak ada di wilayah ini — semuanya harus dibeli di toko Kota Unggul.",
-			"Ada empat komponen yang kau perlukan: sensor pH air, papan rangkaian dan kabel jumper, mikrokontroler berkemampuan WiFi, serta sumber daya berupa kabel USB atau baterai.",
+			"Ada empat komponen yang kamu perlukan: sensor pH air, papan rangkaian dan kabel jumper, mikrokontroler berkemampuan WiFi, serta sumber daya berupa kabel USB atau baterai.",
 			"Uang dari puzzle di Hutan, Pabrik, dan Candi cukup untuk membelinya. Setelah keempat komponen lengkap, kembali ke sini dan rakit perangkatnya."
 		],
 		"objects": [
@@ -624,7 +624,7 @@ const MAPS := [
 			{"id": "danau-terminal", "label": "Terminal Soal", "bank": true, "x": 26, "y": 16, "icon": "sign",
 				"text": [
 					"Terminal ini menampilkan soal acak dari bank soal Internet of Things.",
-					"Soal berganti setiap kali kau menjawab benar, sampai kuota ujian terpenuhi."
+					"Soal berganti setiap kali kamu menjawab benar, sampai kuota ujian terpenuhi."
 				]},
 			{"id": "danau-pipa", "label": "Pipa Bocor", "puzzle": true, "x": 26, "y": 16, "icon": "sign",
 				"text": [
@@ -649,12 +649,23 @@ const MAPS := [
 				"explain": "Daya adalah prasyarat seluruh rangkaian. Tanpa catu daya, sensor tidak menghasilkan sinyal, mikrokontroler tidak menyala, dan modul WiFi tidak dapat terhubung. Urutan pemeriksaan yang benar: daya → input → pengolahan → pengiriman → penyajian."
 			},
 			{
-				"id": "danau-3", "title": "Merakit Perangkat", "type": "craft",
-				"prompt": "Pasang empat komponen yang kau beli di Kota Unggul ke slot yang benar, dari dasar perakitan sampai perangkat menyala.",
+				"id": "danau-3", "title": "Merakit Perangkat", "type": "wire", "fatal": true,
+				"prompt": "Sambungkan kabel antar komponen yang kamu beli di Kota Unggul sampai perangkat bisa menyala. Klik pin sebuah komponen, lalu klik pin komponen lain untuk memasang kabel. Klik pasangan yang sama untuk mencabutnya kembali.",
 				"lesson": {"text": "Rangkaian dirakit dari dasar, input, pengolah, lalu sumber daya.", "prompt": "Simulasi: apa yang menjadi dasar rangkaian?", "options": ["Papan rangkaian", "Sensor pH", "Broker MQTT"], "answer": 0, "success": "Dasar rangkaian benar. Susun semua komponen perangkat.", "wrong": "Papan rangkaian menjadi dasar penghubung komponen fisik."},
-				"slots": ["Papan Rangkaian & Kabel Jumper", "Sensor pH Air", "Mikrokontroler Berkemampuan WiFi", "Sumber Daya"],
-				"pool": ["Papan Rangkaian & Kabel Jumper", "Sensor pH Air", "Mikrokontroler Berkemampuan WiFi", "Sumber Daya", "Kipas Pendingin", "Lampu LED"],
-				"explain": "Perakitan dimulai dari papan rangkaian sebagai dasar, lalu sensor pH dipasang sebagai masukan, mikrokontroler sebagai pengolah data, dan sumber daya agar seluruh rangkaian menyala. Broker MQTT dan dasbor bukan komponen fisik yang dibeli — keduanya berada di sisi jaringan."
+				# Empat komponen asli (dibeli di toko) + dua pengganggu yang bukan
+				# bagian rangkaian. pos = letak kartu di papan perakitan (px).
+				"nodes": [
+					{"id": "daya", "name": "Sumber Daya", "glyph": "battery", "pin": "right", "pos": [20, 6]},
+					{"id": "papan", "name": "Papan Rangkaian", "glyph": "board", "pin": "left", "pos": [310, 6]},
+					{"id": "mcu", "name": "Mikrokontroler WiFi", "glyph": "chip", "pin": "left", "pos": [600, 6]},
+					{"id": "sensor", "name": "Sensor pH Air", "glyph": "probe", "pin": "right", "pos": [20, 104]},
+					{"id": "kipas", "name": "Kipas Pendingin", "glyph": "fan", "pin": "left", "pos": [310, 104], "decoy": true},
+					{"id": "led", "name": "Lampu LED", "glyph": "led", "pin": "left", "pos": [600, 104], "decoy": true},
+				],
+				# Sambungan yang benar: daya menghidupi papan & mikrokontroler,
+				# sensor dipasang di papan, dan sinyal sensor dibaca mikrokontroler.
+				"links": [["daya", "papan"], ["papan", "sensor"], ["sensor", "mcu"], ["daya", "mcu"]],
+				"explain": "Perangkat menyala karena sumber daya menghidupi papan rangkaian dan mikrokontroler, sensor pH dipasang di papan sebagai masukan, dan sinyalnya dibaca mikrokontroler. Kipas pendingin dan lampu LED bukan bagian rangkaian pemantau pH — itulah gunanya membedakan komponen inti dari pelengkap."
 			},
 			{
 				"id": "danau-6", "title": "Alur Data ke Dasbor", "type": "order", "final": true,
@@ -673,7 +684,7 @@ const MAPS := [
 	},
 	{
 		"id": "source", "name": "The Source", "material": "Integrasi 4 Bidang",
-		"desc": "Final dungeon. Semua yang kau pelajari diuji sekaligus, lalu post-test dikerjakan di sini.",
+		"desc": "Final dungeon. Semua yang kamu pelajari diuji sekaligus, lalu post-test dikerjakan di sini.",
 		"badge": "", "badge_name": "",
 		"npc_name": "Guardian", "npc_role": "Penjaga sumber", "npc_sprite": "guardian",
 		"npcs": [
@@ -698,13 +709,13 @@ const MAPS := [
 				],
 				"dialog": [
 					"Enam wilayah, satu pola: data kacau, mesin berhenti, pesan tak terbaca, lalu alat mati.",
-					"Semua yang kau pelajari bermuara di sini. Bicara dulu dengan Guardian sebelum menghadapi sumbernya."
+					"Semua yang kamu pelajari bermuara di sini. Bicara dulu dengan Guardian sebelum menghadapi sumbernya."
 				]},
 		],
 		"req_badge": "aqua", "req_clear": "",
 		"intro": [
-			"Kau sampai juga. Di sini tidak ada petunjuk bertahap. Data, sistem, sandi, dan perangkat harus kau pakai bersamaan.",
-			"Empat ujian terakhir. Jika kau lulus, sumber kerusakan akan berhenti dan Terra pulih."
+			"Kamu sampai juga. Di sini tidak ada petunjuk bertahap. Data, sistem, sandi, dan perangkat harus kamu pakai bersamaan.",
+			"Empat ujian terakhir. Jika kamu lulus, sumber kerusakan akan berhenti dan Terra pulih."
 		],
 		"boss": {"name": "The Source", "hp": 4},
 		"objects": [

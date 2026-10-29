@@ -50,7 +50,7 @@ func _ready() -> void:
 	back.pressed.connect(func(): back_pressed.emit())
 	head.add_child(back)
 
-	_info = UiKit.label("", 14, UiKit.MUTED, 1120)
+	_info = UiKit.label("", 14, UiKit.MUTED, 1080)
 	v.add_child(_info)
 
 	# Ringkasan angka yang biasanya ditanyakan saat sidang (rata-rata nilai,
@@ -58,7 +58,7 @@ func _ready() -> void:
 	# data baru.
 	_sum = UiKit.hbox(8)
 	v.add_child(_sum)
-	_sum_materi = UiKit.label("", 13, UiKit.MUTED, 1120)
+	_sum_materi = UiKit.label("", 13, UiKit.MUTED, 1080)
 	v.add_child(_sum_materi)
 
 	var panel := PanelContainer.new()
@@ -90,8 +90,8 @@ func _ready() -> void:
 		hl.custom_minimum_size.x = COL_W[i]
 		head_grid.add_child(hl)
 	col.add_child(UiKit.rule())
-	col.add_child(UiKit.label("BD = Basis Data · SO = Sistem Operasi · Kripto = Kriptografi · IoT = Internet of Things · Post = nilai post-test (0–100) · Tuntas = nilai ≥ 70", 12, UiKit.MUTED, 1120))
-	col.add_child(UiKit.label("Rancangan pengujian: target 30 responden purposive sampling (Bab III 3.8) · durasi sesi 60 menit untuk Map 1 sampai post-test (Bab III 3.10) · responden yang tidak menuntaskan seluruh map dicatat sebagai data tidak lengkap", 12, UiKit.MUTED, 1120))
+	col.add_child(UiKit.label("BD = Basis Data · SO = Sistem Operasi · Kripto = Kriptografi · IoT = Internet of Things · Post = nilai post-test (0–100) · Tuntas = nilai ≥ 70", 12, UiKit.MUTED, 1080))
+	col.add_child(UiKit.label("Rancangan pengujian: target 30 responden purposive sampling (Bab III 3.8) · durasi sesi 60 menit untuk Map 1 sampai post-test (Bab III 3.10) · responden yang tidak menuntaskan seluruh map dicatat sebagai data tidak lengkap", 12, UiKit.MUTED, 1080))
 
 	_grid = GridContainer.new()
 	_grid.columns = 10
@@ -119,7 +119,7 @@ func _ready() -> void:
 	refresh_btn.pressed.connect(refresh)
 	row.add_child(refresh_btn)
 
-	_status = UiKit.label("", 14, UiKit.ACCENT, 1120)
+	_status = UiKit.label("", 14, UiKit.ACCENT, 1080)
 	v.add_child(_status)
 	refresh()
 
@@ -164,13 +164,13 @@ static func ringkas(recs: Array) -> Dictionary:
 ## Satu kartu ringkasan: angka besar di atas, keterangan kecil di bawah.
 func _stat(judul: String, nilai: String, catatan := "") -> Control:
 	var box := UiKit.vbox(1)
-	box.custom_minimum_size.x = 214
+	box.custom_minimum_size.x = 170
 	box.add_child(UiKit.title(nilai, 19, UiKit.GOLD))
 	box.add_child(UiKit.kicker(judul.to_upper(), UiKit.MUTED, 9))
 	# Keterangan cakupan ditaruh di baris sendiri: kalau digabung ke judul,
 	# teksnya melebihi lebar kartu dan terpotong.
 	if catatan != "":
-		box.add_child(UiKit.label(catatan, 10, UiKit.MUTED, 188))
+		box.add_child(UiKit.label(catatan, 10, UiKit.MUTED, 150))
 	return UiKit.card(box)
 
 func _isi_ringkasan(recs: Array) -> void:
