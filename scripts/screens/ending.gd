@@ -70,11 +70,11 @@ func refresh() -> void:
 	if Game.ending_choice == "seal":
 		_title.text = "SUMBER DISEGEL"
 		_title.add_theme_color_override("font_color", UiKit.GOLD)
-		_sub.text = "Kau memutus aliran data dan menyegel sumber. Kerusakan berhenti, tetapi danau tidak lagi terpantau: tidak ada data yang mengalir untuk memastikan airnya benar-benar pulih."
+		_sub.text = "Kamu memutus aliran data dan menyegel sumber. Kerusakan berhenti, tetapi danau tidak lagi terpantau: tidak ada data yang mengalir untuk memastikan airnya benar-benar pulih."
 	elif Game.ending_choice == "flow":
 		_title.text = "TERRA PULIH"
 		_title.add_theme_color_override("font_color", UiKit.ACCENT)
-		_sub.text = "Kau menyusun ulang protokol dan membiarkan data kembali mengalir. Mesin berjalan, sandi terbaca, dan danau terus terpantau oleh perangkat yang kau rakit sendiri."
+		_sub.text = "Kamu menyusun ulang protokol dan membiarkan data kembali mengalir. Mesin berjalan, sandi terbaca, dan danau terus terpantau oleh perangkat yang kamu rakit sendiri."
 	else:
 		_title.text = "TERRA PULIH"
 		_sub.text = "Data tersusun, mesin berjalan, sandi terbaca, dan danau kembali terpantau."

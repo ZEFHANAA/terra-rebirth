@@ -13,13 +13,26 @@ var meta: Dictionary = {}
 var player: CharacterBody2D
 var npc_node: Node2D
 var npcs: Array = []
+# Kotak badan tiap NPC. Dipakai supaya label benda tidak menimpa karakter.
+var _bodies: Array = []
+# Kotak benda yang bisa dicari pemain, dipakai untuk membersihkan kanopi.
+var _obj_rects: Array = []
 var objects: Array = []
 var portal_node: Node2D
 var camera: Camera2D
 var _prompt_target := ""
+## Tujuan yang ditandai dari jurnal misi ("obj:<id>" atau "npc:<id>").
+## Selama terisi, HUD menunjuk ke sasaran ini, bukan ke objek terdekat.
+var marked := ""
+var _focus: Node2D
 var _t := 0.0
 var prop_block: Dictionary = {}
 var prop_fade: Array = []
+# Kotak kanopi tiap pohon/semak (urutan sama dengan prop_fade) supaya bisa
+# dicek apakah menutupi pemain, bukan hanya jarak ke pangkal pohonnya.
+var prop_rects: Array = []
+## Label nama NPC dan benda, dipakai untuk merapikan label yang bertabrakan.
+var _plates: Array = []
 var actors: Node2D          # wadah ber-y-sort: pemain, NPC, objek, pohon, gedung
 
 func build(id: String) -> void:
@@ -34,9 +47,11 @@ func build(id: String) -> void:
 	_build_collisions()
 	_build_npcs()
 	_build_objects()
+	_bersihkan_kanopi()
 	_build_portal()
 	_build_player()
 	_build_camera()
+	_build_focus()
 
 func _load_meta(id: String) -> Dictionary:
 	var path := "res://assets/maps/%s.json" % id
@@ -94,6 +109,8 @@ func _build_props() -> void:
 		_add_prop_body(str(it.get("n", "tree_big")), spr.position)
 		if str(it.get("n", "")) in ["tree_big", "bush"]:
 			prop_fade.append(spr)
+			var lebar := float(tex.get_width()) * sc
+			prop_rects.append(Rect2(Vector2(spr.position.x - lebar * 0.5, spr.position.y - h), Vector2(lebar, h)))
 
 ## Bodi tabrakan kecil di pangkal pohon/gedung supaya pemain tidak menembusnya.
 func _add_prop_body(kind: String, pos: Vector2) -> void:
@@ -135,11 +152,15 @@ func _fade_canopy(delta: float) -> void:
 	if player == null:
 		return
 	var px := player.position
-	for spr in prop_fade:
-		var sp: Sprite2D = spr
-		var d: Vector2 = sp.position - px
-		var inside := absf(d.x) < 62.0 and d.y < 14.0 and d.y > -160.0
-		var target := 0.42 if (inside and sp.position.y > px.y) else 1.0
+	# Kotak badan pemain (kira-kira seukuran sprite karakter).
+	var badan := Rect2(px + Vector2(-30.0, -74.0), Vector2(60.0, 92.0))
+	for i in range(prop_fade.size()):
+		var sp: Sprite2D = prop_fade[i]
+		var kanopi: Rect2 = prop_rects[i]
+		# Hanya pohon yang tergambar di depan pemain (pangkalnya lebih bawah)
+		# yang perlu dibuat tembus pandang.
+		var kena := kanopi.intersects(badan, false) and sp.position.y > px.y - 6.0
+		var target := 0.42 if kena else 1.0
 		if not is_equal_approx(sp.modulate.a, target):
 			sp.modulate.a = move_toward(sp.modulate.a, target, delta * 4.0)
 
@@ -223,22 +244,25 @@ func _build_npcs() -> void:
 		# baru diperbesar supaya tinggi tubuhnya sama dengan NPC lain.
 		var sk := 144.0 / _npc_frame_size(tex).y
 		spr.scale = Vector2(sk, sk)
-		spr.offset = Vector2(0, -56.0 / sk)
 		if OS.get_environment("TERRA_NPCDBG") != "":
 			print("NPC ", n.get("name"), " frames=", spr.sprite_frames.get_frame_count("idle_down"),
 				" speed=", spr.sprite_frames.get_animation_speed("idle_down"),
 				" playing=", spr.is_playing(), " region=", spr.sprite_frames.get_frame_texture("idle_down", 1).region)
 		var tx := int(n.get("x", meta_npc.get("x", 10)))
 		var ty := int(n.get("y", meta_npc.get("y", 10)))
-		spr.position = tile_center(tx, ty)
-		spr.offset = Vector2(0, -56)
+		var kaki := tile_center(tx, ty) + Vector2(0, 16)
+		# Titik urut gambar (y-sort) diletakkan di kaki, bukan di tengah badan,
+		# supaya pemain yang lewat di depan NPC benar-benar tergambar di depan.
+		# Gambar digeser ke atas lewat offset supaya tampilannya tidak berubah.
+		spr.offset = Vector2(0, -72.0 / sk)
+		spr.position = kaki
 		spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		actors.add_child(spr)
-		_add_shadow(spr.position + Vector2(0, 14), 0.95)
+		_add_shadow(kaki + Vector2(0, -2), 0.95)
 
 		# tabrakan kaki NPC: pemain tidak bisa menembus tubuh NPC
 		var nbody := StaticBody2D.new()
-		nbody.position = spr.position
+		nbody.position = kaki + Vector2(0, -16)
 		var ncs := CollisionShape2D.new()
 		var nshape := RectangleShape2D.new()
 		nshape.size = Vector2(72, 40)
@@ -251,11 +275,12 @@ func _build_npcs() -> void:
 		var lb := _name_plate(str(n.get("name", "NPC")), UiKit.TEXT)
 		add_child(lb)
 		lb.reset_size()
-		lb.position = _clamp_label(spr.position + Vector2(-lb.size.x * 0.5, 18), lb.size.x)
+		lb.position = _clamp_label(kaki + Vector2(-lb.size.x * 0.5, 2), lb.size.x)
+		_plates.append(lb)
 
-		# penanda misi di atas NPC pemberi tugas
+		# penanda di atas NPC pengajar materi
 		var mark: Label = null
-		if str(n.get("action", "quest")) == "quest":
+		if str(n.get("action", "")) == "materi":
 			mark = Label.new()
 			mark.text = "!"
 			mark.add_theme_font_override("font", UiKit.pixel_font())
@@ -266,11 +291,13 @@ func _build_npcs() -> void:
 			mark.z_index = 21
 			add_child(mark)
 			mark.reset_size()
-			mark.position = spr.position + Vector2(-mark.size.x * 0.5, -190)
+			mark.position = kaki + Vector2(-mark.size.x * 0.5, -176)
 
+		var fsz := spr.sprite_frames.get_frame_texture("idle_down", 0).get_size()
+		_bodies.append(Rect2(spr.position + (-fsz * 0.5 + spr.offset) * sk, fsz * sk))
 		npcs.append({"id": str(n.get("id", "utama")), "name": str(n.get("name", "NPC")),
 			"action": str(n.get("action", "quest")), "node": spr, "mark": mark})
-		if str(n.get("action", "quest")) == "quest" and npc_node == null:
+		if npc_node == null:
 			npc_node = spr
 
 ## Ukuran satu frame pada sheet NPC.
@@ -303,17 +330,23 @@ func _build_objects() -> void:
 		var spr := Sprite2D.new()
 		spr.texture = load("res://assets/sprites/obj_%s.png" % str(o.get("icon", "sign")))
 		spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-		# +8 pada posisi (dan -10 pada offset) membuat objek selalu tergambar
-		# di depan pohon/gedung di dekatnya, tanpa mengubah posisi tampilannya.
-		spr.position = tile_center(int(o["x"]), int(o["y"])) + Vector2(0, 6)
-		spr.offset = Vector2(0, -8)
+		var osz: Vector2 = spr.texture.get_size()
+		var dasar := tile_center(int(o["x"]), int(o["y"])) + Vector2(0, 6)
+		# Titik urut gambar diletakkan di dasar benda, bukan di tengahnya, supaya
+		# pemain yang berdiri di depan benda benar-benar tergambar di depan.
+		# Offset dipakai agar tampilan bendanya tidak bergeser sedikit pun.
+		spr.offset = Vector2(0, -osz.y * 0.5)
+		spr.position = dasar + Vector2(0, osz.y * 0.5 - 8.0)
 		actors.add_child(spr)
-		_add_shadow(spr.position + Vector2(0, 3), 0.7)
+		_add_shadow(dasar + Vector2(0, 3), 0.7)
+
+		_obj_rects.append(Rect2(spr.position + spr.offset - osz * 0.5, osz))
 
 		var lb := _name_plate(str(o.get("label", "Objek")), UiKit.BLUE)
 		add_child(lb)
 		lb.reset_size()
-		lb.position = _clamp_label(spr.position + Vector2(-lb.size.x * 0.5, -26), lb.size.x)
+		lb.position = _clamp_label(dasar + Vector2(-lb.size.x * 0.5, -26), lb.size.x)
+		_plates.append(lb)
 
 		var mark := Label.new()
 		mark.text = "?"
@@ -325,10 +358,108 @@ func _build_objects() -> void:
 		mark.z_index = 21
 		add_child(mark)
 		mark.reset_size()
-		mark.position = spr.position + Vector2(-mark.size.x * 0.5, -42)
+		mark.position = dasar + Vector2(-mark.size.x * 0.5, -42)
 
 		objects.append({"id": str(o["id"]), "label": str(o.get("label", "Objek")),
 			"node": spr, "mark": mark, "data": o})
+	_stack_plates(_plates)
+
+## Dua benda yang berdampingan bisa membuat label namanya saling menimpa.
+## Label yang bertabrakan digeser ke atas sampai tidak menutupi label lain.
+func _stack_plates(plates: Array) -> void:
+	# Diulang beberapa kali karena menggeser satu label bisa memunculkan
+	# tabrakan baru dengan label atau badan karakter lain.
+	for _pass in range(5):
+		var berubah := false
+		# A. label tidak boleh menutupi badan karakter: digeser ke samping
+		# dulu (paling dekat dengan benda), baru ke atas kepala / bawah kaki.
+		for i in range(plates.size()):
+			var a: Label = plates[i]
+			for body in _bodies:
+				if not Rect2(a.position, a.size).intersects(body, false):
+					continue
+				var kanan: float = body.position.x + body.size.x + 4.0
+				var kiri: float = body.position.x - a.size.x - 4.0
+				var baru_x := a.position.x
+				if kanan + a.size.x <= _map_w():
+					baru_x = kanan
+				elif kiri >= 0.0:
+					baru_x = kiri
+				if not is_equal_approx(baru_x, a.position.x):
+					a.position.x = baru_x
+					berubah = true
+				else:
+					var atas: float = body.position.y - a.size.y - 2.0
+					var bawah: float = body.position.y + body.size.y + 2.0
+					var baru_y: float = atas if absf(atas - a.position.y) <= absf(bawah - a.position.y) else bawah
+					if not is_equal_approx(baru_y, a.position.y):
+						a.position.y = baru_y
+						berubah = true
+		# B. label yang belakangan digeser ke atas bila menimpa label lain.
+		for i in range(plates.size()):
+			var a2: Label = plates[i]
+			for j in range(i):
+				var b: Label = plates[j]
+				if Rect2(a2.position, a2.size).intersects(Rect2(b.position, b.size), false):
+					var naik: float = b.position.y - a2.size.y - 2.0
+					if not is_equal_approx(naik, a2.position.y):
+						a2.position.y = naik
+						berubah = true
+		if not berubah:
+			break
+
+## Kanopi pohon yang tergambar di depan badan NPC membuat NPC tidak terlihat.
+## Pohon seperti itu dilepas (pohon tidak punya tabrakan, jadi aman) supaya
+## seluruh NPC selalu tampak utuh.
+func _bersihkan_kanopi() -> void:
+	var buang: Array = []
+	for i in range(prop_fade.size()):
+		var kanopi: Rect2 = prop_rects[i]
+		var sp: Sprite2D = prop_fade[i]
+		var kena := false
+		for body in _bodies:
+			if sp.position.y <= body.position.y:
+				continue
+			var w := minf(kanopi.position.x + kanopi.size.x, body.position.x + body.size.x) - maxf(kanopi.position.x, body.position.x)
+			var h := minf(kanopi.position.y + kanopi.size.y, body.position.y + body.size.y) - maxf(kanopi.position.y, body.position.y)
+			if w > 0.0 and h > 0.0 and w * h > body.size.x * body.size.y * 0.2:
+				kena = true
+				break
+		if not kena:
+			for orc in _obj_rects:
+				if sp.position.y <= orc.position.y:
+					continue
+				var w2 := minf(kanopi.position.x + kanopi.size.x, orc.position.x + orc.size.x) - maxf(kanopi.position.x, orc.position.x)
+				var h2 := minf(kanopi.position.y + kanopi.size.y, orc.position.y + orc.size.y) - maxf(kanopi.position.y, orc.position.y)
+				if w2 > 0.0 and h2 > 0.0 and w2 * h2 > orc.size.x * orc.size.y * 0.45:
+					kena = true
+					break
+		if kena:
+			buang.append(i)
+	buang.reverse()
+	for i in buang:
+		(prop_fade[i] as Sprite2D).queue_free()
+		prop_fade.remove_at(i)
+		prop_rects.remove_at(i)
+
+## Penanda tujuan dari jurnal: belah ketupat keemasan yang berdenyut di atas
+## benda/NPC yang dipilih pemain.
+func _build_focus() -> void:
+	# Digambar sebagai poligon, bukan huruf, supaya tidak bergantung pada glyph
+	# yang tersedia di font pixel.
+	var root := Node2D.new()
+	root.z_index = 22
+	root.visible = false
+	var tepi := Polygon2D.new()
+	tepi.polygon = PackedVector2Array([Vector2(0, -13), Vector2(13, 0), Vector2(0, 13), Vector2(-13, 0)])
+	tepi.color = Color(0.10, 0.06, 0.02, 0.85)
+	root.add_child(tepi)
+	var isi := Polygon2D.new()
+	isi.polygon = PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)])
+	isi.color = UiKit.GOLD
+	root.add_child(isi)
+	add_child(root)
+	_focus = root
 
 func _build_portal() -> void:
 	var info: Dictionary = meta.get("portal", {})
@@ -400,7 +531,7 @@ func _process(delta: float) -> void:
 	var best := 88.0
 	for n in npcs:
 		var node: Node2D = n["node"]
-		var d := player.position.distance_to(node.position + Vector2(0, 46))
+		var d := player.position.distance_to(node.position + Vector2(0, 30))
 		# NPC menoleh ke sisi tempat pemain berdiri supaya terasa hidup.
 		var face_left: bool = player.position.x < node.position.x - 4.0
 		if node is AnimatedSprite2D and node.flip_h != face_left:
@@ -436,7 +567,7 @@ func _animate_marks() -> void:
 		mark.visible = not cleared
 		if mark.visible:
 			var base: Vector2 = n["node"].position
-			mark.position = base + Vector2(-mark.size.x * 0.5, -134 + bob)
+			mark.position = base + Vector2(-mark.size.x * 0.5, -176 + bob)
 	for o in objects:
 		var active := _object_active(o)
 		(o["node"] as Node2D).visible = active
@@ -444,7 +575,16 @@ func _animate_marks() -> void:
 		om.visible = active
 		if active:
 			var obase: Vector2 = o["node"].position
-			om.position = obase + Vector2(-om.size.x * 0.5, -56 + bob)
+			om.position = obase + Vector2(-om.size.x * 0.5, -78 + bob)
+	if _focus != null:
+		var t := _marked_target()
+		if t.is_empty():
+			_focus.visible = false
+		else:
+			_focus.visible = true
+			var p: Vector2 = t["pos"]
+			_focus.position = p + Vector2(0, -92 + bob * 1.6)
+			_focus.modulate.a = 0.65 + 0.35 * sin(_t * 4.0)
 
 func _object_entry(obj_id: String) -> Dictionary:
 	for o in objects:
@@ -455,6 +595,16 @@ func _object_entry(obj_id: String) -> Dictionary:
 ## Objek disembunyikan bila tantangannya sudah selesai.
 ## Objek/NPC terdekat yang belum selesai — dipakai HUD untuk panah tujuan.
 func next_objective() -> Dictionary:
+	# Penanda dari jurnal misi menang atas objek terdekat, supaya pemain
+	# benar-benar diarahkan ke misi yang ia pilih.
+	if marked != "":
+		var t := _marked_target()
+		if t.is_empty():
+			clear_mark()
+		elif (t["pos"] as Vector2).distance_to(player.position) < 130.0:
+			clear_mark()
+		else:
+			return t
 	var best := {}
 	var best_d := 1e9
 	for o in objects:
@@ -478,6 +628,45 @@ func next_objective() -> Dictionary:
 			best_d = d2
 			best = {"pos": node2.position, "name": str(n.get("name", "NPC"))}
 	return best
+
+## Menaruh penanda pada satu objek/NPC. Mengembalikan false bila sasaran tidak
+## ada atau misinya sudah selesai.
+func mark_objective(target: String) -> bool:
+	if target == "":
+		return false
+	if _marked_target_of(target).is_empty():
+		return false
+	marked = target
+	return true
+
+func clear_mark() -> void:
+	marked = ""
+	if _focus != null:
+		_focus.visible = false
+
+## Sasaran penanda aktif, dalam bentuk {"pos", "name"}; kosong bila sasaran
+## sudah tidak ada (mis. misinya selesai dan objeknya disembunyikan).
+func _marked_target() -> Dictionary:
+	return _marked_target_of(marked)
+
+func _marked_target_of(target: String) -> Dictionary:
+	if target.begins_with("obj:"):
+		var o := _object_entry(target.substr(4))
+		if o.is_empty() or not _object_active(o):
+			return {}
+		var onode := o["node"] as Node2D
+		if onode == null:
+			return {}
+		return {"pos": onode.position, "name": str(o["label"])}
+	if target.begins_with("npc:"):
+		var n := _npc_entry(target.substr(4))
+		if n.is_empty():
+			return {}
+		var nnode := n["node"] as Node2D
+		if nnode == null:
+			return {}
+		return {"pos": nnode.position, "name": str(n.get("name", "NPC"))}
+	return {}
 
 func _object_active(o: Dictionary) -> bool:
 	var data: Dictionary = o["data"]

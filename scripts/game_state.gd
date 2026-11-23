@@ -15,10 +15,22 @@ signal coins_changed(coins: int)
 signal items_changed()
 signal components_changed()
 signal progress_changed()
+signal map_failed(map_id: String)
+signal lives_changed(map_id: String, lives: int)
 
 # ------------------------------------------------------------- audio
 ## Musik latar + efek suara (WAV hasil sintesis di assets/audio/).
 var audio_on := true
+## Volume yang bisa diatur pemain lewat layar jeda (dB). Nilai awal sama dengan
+## nilai yang dulu dipatok di kode, jadi bunyi tidak berubah bagi yang tidak
+## menyentuh pengaturan.
+## Ujung kiri penggeser volume = benar-benar senyap (-80 dB), bukan -60 dB,
+## supaya pemain bisa membisukan game hanya dengan penggeser.
+const SILENT_DB := -60.0
+var bgm_db := -13.0
+var sfx_db := -7.0
+## Kecepatan munculnya teks dialog (1.0 = normal).
+var text_speed := 1.0
 var _bgm: AudioStreamPlayer
 var _sfx_pool: Array[AudioStreamPlayer] = []
 var _sfx_next := 0
@@ -33,6 +45,7 @@ func _ready() -> void:
 		var pl := AudioStreamPlayer.new()
 		add_child(pl)
 		_sfx_pool.append(pl)
+	load_settings()
 
 func play_bgm(id: String) -> void:
 	if _bgm == null or (not audio_on) or _bgm_id == id:
@@ -45,12 +58,14 @@ func play_bgm(id: String) -> void:
 		st.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		st.loop_end = st.data.size() / 2  # mono 16 bit -> jumlah frame
 	_bgm.stream = st
-	_bgm.volume_db = -13.0
+	_bgm.volume_db = -80.0 if bgm_db <= SILENT_DB + 1.0 else bgm_db
 	_bgm.play()
 	_bgm_id = id
 
 func sfx(id: String, vol: float = -7.0) -> void:
-	if not audio_on or _sfx_pool.is_empty():
+	# Penggeser "Efek Suara" di ujung kiri berarti benar-benar senyap, bukan
+	# sekadar pelan, supaya pemain bisa membisukan game tanpa tombol terpisah.
+	if not audio_on or sfx_db <= SILENT_DB + 1.0 or _sfx_pool.is_empty():
 		return
 	var path := AUDIO_DIR + id + ".wav"
 	if not ResourceLoader.exists(path):
@@ -58,34 +73,77 @@ func sfx(id: String, vol: float = -7.0) -> void:
 	var pl := _sfx_pool[_sfx_next % _sfx_pool.size()]
 	_sfx_next += 1
 	pl.stream = load(path)
-	pl.volume_db = vol
+	# `vol` adalah volume relatif terhadap setelan pemain, supaya penggeser
+	# "Efek Suara" tetap berpengaruh pada semua efek.
+	pl.volume_db = vol + (sfx_db + 7.0)
 	pl.play()
 
-func toggle_audio() -> bool:
-	audio_on = not audio_on
-	if not audio_on:
-		if _bgm != null:
-			_bgm.stop()
-		for pl in _sfx_pool:
-			pl.stop()
-	else:
-		_bgm_id = ""
-		play_bgm("bgm_final" if current_map == "source" else "bgm_explore")
-	return audio_on
+## Pengaturan suara dari layar jeda. Langsung diterapkan agar pemain mendengar
+## perubahannya saat menggeser.
+func set_bgm_db(v: float) -> void:
+	bgm_db = clampf(v, SILENT_DB, 0.0)
+	if _bgm != null:
+		_bgm.volume_db = -80.0 if bgm_db <= SILENT_DB + 1.0 else bgm_db
+
+func set_sfx_db(v: float) -> void:
+	sfx_db = clampf(v, SILENT_DB, 0.0)
+
+func set_text_speed(v: float) -> void:
+	text_speed = clampf(v, 0.5, 2.0)
+
+func save_settings() -> void:
+	var f := FileAccess.open(settings_path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({
+		"bgm_db": bgm_db, "sfx_db": sfx_db, "text_speed": text_speed,
+	}, "	"))
+	f.close()
+
+func load_settings() -> void:
+	if not FileAccess.file_exists(settings_path):
+		return
+	var f := FileAccess.open(settings_path, FileAccess.READ)
+	if f == null:
+		return
+	var raw := f.get_as_text()
+	f.close()
+	var data = JSON.parse_string(raw)
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	set_bgm_db(float(data.get("bgm_db", bgm_db)))
+	set_sfx_db(float(data.get("sfx_db", sfx_db)))
+	set_text_speed(float(data.get("text_speed", text_speed)))
 
 ## Path bisa dialihkan saat pengujian/demo supaya data peserta asli tidak tersentuh.
 var save_path := "user://save_terra.json"
+## Setelan tampil/suara disimpan terpisah dari progres. Kalau ikut `save_path`,
+## pemain yang baru menyetel volume di layar judul akan dianggap sudah punya
+## simpanan, sehingga tombol "Lanjutkan" menyala padahal belum pernah bermain.
+var settings_path := "user://settings_terra.json"
 var record_path := "user://records_terra.json"
 
 var badges: Array[String] = []
 var done: Dictionary = {}          # challenge_id -> true
+var map_lives: Dictionary = {}      # map_id -> nyawa tersisa, per wilayah
+var outro_seen: Dictionary = {}     # map_id -> penutup cerita sudah ditampilkan
 var current_map: String = "kota"
 var player_code: String = ""       # kode peserta untuk mode pengujian
 var prompt_text: String = ""
 var coins: int = 0
+## Tantangan yang koinnya sudah pernah dibayarkan. Tidak pernah direset, supaya
+## mengulang wilayah setelah nyawa habis tidak menjadi tambang uang.
+var earned: Dictionary = {}
 var items: Dictionary = {}         # item_id -> jumlah yang dimiliki
 var components: Dictionary = {}    # komponen perangkat yang sudah dibeli di toko
 var ending_choice: String = ""     # "seal" atau "flow"
+
+## Bank soal: hasil undian disimpan agar soal tidak berganti saat quest dibuka
+## ulang, dan agar tim peneliti bisa tahu soal mana yang diterima peserta.
+var bank_picks: Dictionary = {}    # challenge_id -> id soal bank
+var puzzle_picks: Dictionary = {}  # challenge_id -> id puzzle bank
+var post_picks: Array = []         # id soal post-test yang diundi untuk peserta
+var penalized: Dictionary = {}     # challenge_id -> true (nyawa sudah dipotong)
 
 ## Status asesmen (post-test & SUS) pada sesi berjalan.
 var post_answers: Array = []       # jawaban post-test, -1 bila kosong
@@ -112,8 +170,15 @@ const SHOP := Content.SHOP
 func reset() -> void:
 	badges.clear()
 	done.clear()
+	map_lives.clear()
+	outro_seen.clear()
+	bank_picks.clear()
+	puzzle_picks.clear()
+	post_picks.clear()
+	penalized.clear()
 	current_map = "kota"
 	coins = 0
+	earned.clear()            # peserta baru: riwayat pembayaran koin ikut direset
 	items.clear()
 	components.clear()
 	ending_choice = ""
@@ -152,6 +217,144 @@ func map_total(map_id: String) -> int:
 func is_map_cleared(map_id: String) -> bool:
 	return map_total(map_id) > 0 and map_done(map_id) >= map_total(map_id)
 
+# ------------------------------------------------------- nyawa & bank soal
+## Nyawa tersisa pada satu wilayah.
+func lives_left(map_id: String) -> int:
+	return int(map_lives.get(map_id, Content.LIVES_PER_MAP))
+
+## Mencatat satu jawaban salah. Satu quest hanya memotong satu nyawa, supaya
+## satu teka-teki sulit tidak langsung menghabiskan seluruh wilayah.
+## Mengembalikan sisa nyawa setelah pencatatan.
+func note_mistake(map_id: String, challenge_id: String) -> int:
+	if challenge_id == "" or penalized.has(challenge_id):
+		return lives_left(map_id)
+	penalized[challenge_id] = true
+	var left := lives_left(map_id) - 1
+	map_lives[map_id] = left
+	lives_changed.emit(map_id, left)
+	if left <= 0:
+		_fail_map(map_id)
+	else:
+		save_game()
+	return left
+
+## Nyawa habis: SELURUH progres dan badge dihapus. Uang, item, dan komponen yang
+## sudah dibeli tetap tersimpan supaya pembelian pemain tidak hangus. Kode peserta
+## juga dipertahankan karena itu identitas, bukan progres permainan.
+func _fail_map(map_id: String) -> void:
+	badges.clear()
+	done.clear()
+	outro_seen.clear()
+	bank_picks.clear()
+	puzzle_picks.clear()
+	penalized.clear()
+	post_picks.clear()
+	map_lives.clear()
+	post_answers = []
+	post_done = false
+	sus_answers = []
+	sus_done = false
+	ending_choice = ""
+	current_map = "kota"
+	save_game()
+	progress_changed.emit()
+	lives_changed.emit(map_id, 0)
+	map_failed.emit(map_id)
+
+## Soal bank untuk satu tantangan. Undian disimpan, jadi soal tidak berganti
+## saat panel dibuka ulang, tetapi tetap berbeda antar peserta.
+func bank_question(challenge_id: String, materi: String) -> Dictionary:
+	var bank := Content.bank_of(materi)
+	if bank.is_empty():
+		return {}
+	var picked := str(bank_picks.get(challenge_id, ""))
+	if picked != "":
+		for it in bank:
+			if str(it.get("id", "")) == picked:
+				return it
+	var idx := _roll_index(challenge_id, materi, bank.size())
+	var item: Dictionary = bank[idx]
+	bank_picks[challenge_id] = str(item.get("id", ""))
+	save_game()
+	return item
+
+## Mengundi soal yang belum dipakai pada wilayah yang sama. Undian memakai
+## RNG acak (bukan seed tetap) supaya soal benar-benar berbeda tiap sesi.
+func _roll_index(challenge_id: String, materi: String, n: int) -> int:
+	var bank := Content.bank_of(materi)
+	var prefix := challenge_id.split("-")[0]
+	var used: Array = []
+	for cid in bank_picks.keys():
+		if str(cid).begins_with(prefix + "-"):
+			used.append(str(bank_picks[cid]))
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var start := rng.randi_range(0, n - 1)
+	for step in range(n):
+		var i := (start + step) % n
+		if not used.has(str(bank[i].get("id", ""))):
+			return i
+	return start
+
+## Puzzle acak untuk satu tantangan puzzle. Undian disimpan, jadi puzzle tidak
+## berganti saat panel dibuka ulang, tetapi berbeda tiap sesi.
+func bank_puzzle(challenge_id: String, materi: String) -> Dictionary:
+	var bank := Content.puzzles_of(materi)
+	if bank.is_empty():
+		return {}
+	var picked := str(puzzle_picks.get(challenge_id, ""))
+	if picked != "":
+		for it in bank:
+			if str(it.get("id", "")) == picked:
+				return it
+	var idx := _roll_puzzle_index(bank, challenge_id)
+	var item: Dictionary = bank[idx]
+	puzzle_picks[challenge_id] = str(item.get("id", ""))
+	save_game()
+	return item
+
+func _roll_puzzle_index(bank: Array, challenge_id: String) -> int:
+	var prefix := challenge_id.split("-")[0]
+	var used: Array = []
+	for cid in puzzle_picks.keys():
+		if str(cid).begins_with(prefix + "-"):
+			used.append(str(puzzle_picks[cid]))
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var start := rng.randi_range(0, bank.size() - 1)
+	for step in range(bank.size()):
+		var i := (start + step) % bank.size()
+		if not used.has(str(bank[i].get("id", ""))):
+			return i
+	return start
+
+## Puzzle gagal tidak memotong satu nyawa, tetapi langsung menghabiskan nyawa
+## wilayah itu sehingga seluruh progres direset.
+func fail_puzzle(map_id: String) -> void:
+	_fail_map(map_id)
+
+## Mengulang satu wilayah tanpa menghapus uang, item, komponen, maupun badge.
+## Dipakai tombol "Ulangi Wilayah" di layar jeda: pemain yang ingin mencoba lagi
+## tidak perlu menghapus seluruh simpanan.
+func restart_map(map_id: String) -> void:
+	var prefix := map_id + "-"
+	for bucket in [done, penalized, bank_picks, puzzle_picks]:
+		for key in (bucket as Dictionary).keys():
+			if str(key).begins_with(prefix):
+				(bucket as Dictionary).erase(key)
+	outro_seen.erase(map_id)
+	map_lives[map_id] = Content.LIVES_PER_MAP
+	save_game()
+	progress_changed.emit()
+	lives_changed.emit(map_id, Content.LIVES_PER_MAP)
+
+## Dua puluh soal post-test (5 per materi) yang diundi untuk peserta ini.
+func posttest_items() -> Array:
+	if post_picks.is_empty():
+		post_picks = Content.posttest_ids(player_code)
+		save_game()
+	return Content.items_by_ids(post_picks)
+
 func has_badge(badge_id: String) -> bool:
 	return badge_id == "" or badges.has(badge_id)
 
@@ -188,8 +391,10 @@ func complete_challenge(challenge_id: String, map_id: String) -> bool:
 	if done.has(challenge_id):
 		return false
 	done[challenge_id] = true
-	# Uang hanya dari puzzle Map 2-Map 5, sekali untuk setiap puzzle.
-	if COINS_MAPS.has(map_id):
+	# Uang hanya dari puzzle Map 2-Map 5, dan hanya sekali untuk setiap puzzle —
+	# termasuk setelah progres direset, karena `earned` tidak ikut dihapus.
+	if COINS_MAPS.has(map_id) and not earned.has(challenge_id):
+		earned[challenge_id] = true
 		coins += COINS_PER_CHALLENGE
 		coins_changed.emit(coins)
 		sfx("sfx_coin")
@@ -220,16 +425,17 @@ func grade_posttest(answers: Array) -> Dictionary:
 	var per := {}
 	for mt in Content.MATERI:
 		per[mt] = {"benar": 0, "total": 0}
-	for i in range(Content.TEST_ITEMS.size()):
-		var item: Dictionary = Content.TEST_ITEMS[i]
+	var items := posttest_items()
+	for i in range(items.size()):
+		var item: Dictionary = items[i]
 		var mt := str(item["m"])
 		per[mt]["total"] = int(per[mt]["total"]) + 1
 		var a := int(answers[i]) if i < answers.size() else -1
 		if a == int(item["a"]):
 			benar += 1
 			per[mt]["benar"] = int(per[mt]["benar"]) + 1
-	var total := Content.TEST_ITEMS.size()
-	var nilai := int(round(float(benar) / float(total) * 100.0))
+	var total := items.size()
+	var nilai := int(round(float(benar) / float(total) * 100.0)) if total > 0 else 0
 	return {
 		"nilai": nilai,
 		"benar": benar,
@@ -247,6 +453,13 @@ func submit_posttest(answers: Array) -> Dictionary:
 	# berhenti sebelum mengisi SUS; baris yang sama diperbarui saat SUS dikirim.
 	save_assessment_record(-1.0)
 	return res
+
+## Kunci jawaban untuk 20 soal yang benar-benar diterima peserta ini.
+func answer_key() -> Array:
+	var out: Array = []
+	for it in posttest_items():
+		out.append(int(it["a"]))
+	return out
 
 func posttest_result() -> Dictionary:
 	if not post_done:
@@ -309,7 +522,10 @@ func save_game() -> void:
 	var data := {
 		"badges": badges, "done": done, "current_map": current_map,
 		"player_code": player_code, "coins": coins, "items": items,
-		"components": components, "ending_choice": ending_choice,
+		"map_lives": map_lives, "outro_seen": outro_seen, "bank_picks": bank_picks,
+		"puzzle_picks": puzzle_picks,
+		"post_picks": post_picks, "penalized": penalized,
+		"components": components, "ending_choice": ending_choice, "earned": earned,
 		"post_answers": post_answers, "post_done": post_done,
 		"sus_answers": sus_answers, "sus_done": sus_done,
 		"session_start": session_start, "session_end": session_end,
@@ -338,9 +554,18 @@ func load_game() -> bool:
 	for b in data.get("badges", []):
 		badges.append(str(b))
 	done = data.get("done", {})
+	map_lives = data.get("map_lives", {})
+	outro_seen = data.get("outro_seen", {})
+	bank_picks = data.get("bank_picks", {})
+	puzzle_picks = data.get("puzzle_picks", {})
+	post_picks = data.get("post_picks", [])
+	penalized = data.get("penalized", {})
 	current_map = str(data.get("current_map", "kota"))
 	player_code = str(data.get("player_code", ""))
 	coins = int(data.get("coins", 0))
+	## Save lama belum punya "earned": anggap tantangan yang sudah selesai sudah
+	## dibayar, supaya pemain lama tidak bisa memanen koin dua kali.
+	earned = data.get("earned", done.duplicate())
 	items = data.get("items", {})
 	components = data.get("components", {})
 	ending_choice = str(data.get("ending_choice", ""))
@@ -422,7 +647,7 @@ func export_csv(path: String) -> bool:
 		return false
 	var head := ["kode", "tanggal", "durasi_menit", "benar", "total", "post",
 		"basis_data", "sistem_operasi", "kriptografi", "iot", "tuntas", "sus"]
-	for i in range(Content.TEST_ITEMS.size()):
+	for i in range(post_picks.size() if not post_picks.is_empty() else 20):
 		head.append("q%d" % (i + 1))
 	for i in range(Content.SUS_ITEMS.size()):
 		head.append("s%d" % (i + 1))
@@ -443,7 +668,7 @@ func export_csv(path: String) -> bool:
 			("" if float(r.get("sus", -1.0)) < 0.0 else "%.1f" % float(r.get("sus", 0.0))),
 		]
 		var pj: Array = r.get("post_jawaban", [])
-		for i in range(Content.TEST_ITEMS.size()):
+		for i in range(post_picks.size() if not post_picks.is_empty() else 20):
 			row.append(str(int(pj[i]) + 1) if i < pj.size() and int(pj[i]) >= 0 else "")
 		var sj: Array = r.get("sus_jawaban", [])
 		for i in range(Content.SUS_ITEMS.size()):
