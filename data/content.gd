@@ -145,14 +145,14 @@ const MAPS := [
 		"id": "kota", "name": "Kota Unggul", "material": "Tutorial & Hub",
 		"desc": "Pusat kota. Temui Kepala Kota, terima quest pengantar, dan pelajari aturan main.",
 		"badge": "", "badge_name": "",
-		"npc_name": "Kepala Kota", "npc_role": "Pemberi tugas", "npc_sprite": "kepala",
+		"npc_name": "Kepala Kota", "npc_role": "Pemberi tugas", "npc_sprite": "kepala_kota",
 		"npcs": [
-			{"id": "kepala", "name": "Kepala Kota", "role": "Pengajar pengantar", "sprite": "kepala", "x": 30, "y": 12, "action": "materi",
+			{"id": "kepala", "name": "Kepala Kota", "role": "Pengajar pengantar", "sprite": "kepala_kota", "x": 30, "y": 12, "action": "materi",
 				"story": [
 					"Aku sudah tiga puluh tahun mencatat setiap sumur di kota ini.",
 					"Anakku dulu yang memeriksa kualitas air; sekarang giliranmu.",
 				]},
-			{"id": "gerbang", "name": "Penjaga Gerbang", "role": "Penjaga jalan", "sprite": "penjaga", "x": 52, "y": 18, "action": "gate",
+			{"id": "gerbang", "name": "Penjaga Gerbang", "role": "Penjaga jalan", "sprite": "penjaga_gerbang", "x": 52, "y": 18, "action": "gate",
 				"story": [
 					"Gerbang ini hanya terbuka bagi yang membawa badge wilayah sebelumnya.",
 					"Aku tidak bosan mengulanginya setiap hari.",
@@ -171,7 +171,7 @@ const MAPS := [
 					"Aku juga menyimpan komponen perangkat pemantau air: sensor pH, papan rangkaian dan kabel jumper, mikrokontroler ber-WiFi, serta sumber daya. Tanpa keempatnya, perakitan di Danau Citra tidak akan jalan.",
 					"Lensa Analisis paling laris. Sekali pakai, tapi cukup untuk membuka petunjuk saat kamu benar-benar buntu."
 				]},
-			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti", "x": 40, "y": 22, "action": "info",
+			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti_lingkungan", "x": 40, "y": 22, "action": "info",
 				"story": [
 					"Aku mengukur pH air kota setiap pagi; angkanya terus turun.",
 					"Kota butuh orang yang paham data, bukan cuma berani.",
@@ -180,6 +180,22 @@ const MAPS := [
 					"Aku mencatat kerusakan lingkungan di enam wilayah. Polanya selalu sama: data kacau, mesin berhenti, pesan tak terbaca, lalu alat pemantau mati.",
 					"Karena itu perjalananmu disusun berurutan: Basis Data di Hutan, Sistem Operasi di Pabrik, Kriptografi di Candi, lalu IoT di Danau. Yang terakhir adalah sumbernya.",
 					"Jangan lompat urutan. Konsep di wilayah awal dipakai lagi di wilayah akhir."
+				]},
+			{"id": "penjaga_keamanan_1", "name": "Penjaga Keamanan 1", "role": "Patroli Kota", "sprite": "penjaga_keamanan_1", "x": 18, "y": 11, "action": "info",
+				"patrol": [[18, 11], [22, 11], [22, 13], [18, 13]], "patrol_speed": 38,
+				"story": ["Halo. Kabar baik, kota cukup tenang hari ini.", "Aku sedang berkeliling memastikan jalan dan rumah warga aman."],
+				"dialog": [
+					"Kalau kamu melihat orang mencurigakan atau menemukan jejak penjahat, segera laporkan kepadaku.",
+					"Sejauh ini belum ada penjahat yang terlihat. Tapi aku tetap patroli, siapa tahu ada sesuatu di sudut kota.",
+					"Kadang aku juga lupa sudah melewati jalan ini berapa kali. Yang penting warga merasa aman."
+				]},
+			{"id": "penjaga_keamanan_2", "name": "Penjaga Keamanan 2", "role": "Patroli Kota", "sprite": "penjaga_keamanan_2", "x": 38, "y": 11, "action": "info",
+				"patrol": [[38, 11], [43, 11], [43, 13], [38, 13]], "patrol_speed": 34,
+				"story": ["Salam. Aku baik-baik saja, masih kuat berjaga.", "Lagi memeriksa keadaan sekitar. Ada yang bisa kubantu?"],
+				"dialog": [
+					"Kalau bertanya sedang apa, ya patroli seperti biasa. Belum ada kejadian yang perlu ditangani.",
+					"Penjahat? Belum ada laporan hari ini. Semoga tetap begitu, tapi mataku tetap terbuka.",
+					"Kalau kamu melihat sesuatu yang aneh, beri tahu penjaga terdekat. Kami biasanya tidak jauh—sedang berkeliling saja."
 				]},
 		],
 		"req_badge": "", "req_clear": "",
@@ -916,7 +932,7 @@ static func items_by_ids(ids: Array) -> Array:
 	return out
 
 ## Memilih 5 soal per materi secara acak; hasilnya disimpan agar stabil saat save.
-static func posttest_ids(participant: String) -> Array:
+static func posttest_ids(_participant: String) -> Array:
 	var out: Array = []
 	for materi in MATERI:
 		var bank := bank_of(materi).duplicate()

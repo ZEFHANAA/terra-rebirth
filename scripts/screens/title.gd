@@ -156,7 +156,10 @@ func _ready() -> void:
 	shadow.offset_bottom = 158
 	add_child(shadow)
 
-	var hero_tex: Texture2D = load("res://assets/sprites/mc/portrait.png")
+	var hero_sheet: Texture2D = load("res://assets/sprites/player_hero_v2_spritesheet.png")
+	var hero_tex := AtlasTexture.new()
+	hero_tex.atlas = hero_sheet
+	hero_tex.region = Rect2(0, 0, 32, 32)
 	var hero := TextureRect.new()
 	hero.texture = hero_tex
 	hero.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

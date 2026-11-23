@@ -425,16 +425,16 @@ func grade_posttest(answers: Array) -> Dictionary:
 	var per := {}
 	for mt in Content.MATERI:
 		per[mt] = {"benar": 0, "total": 0}
-	var items := posttest_items()
-	for i in range(items.size()):
-		var item: Dictionary = items[i]
+	var test_items := posttest_items()
+	for i in range(test_items.size()):
+		var item: Dictionary = test_items[i]
 		var mt := str(item["m"])
 		per[mt]["total"] = int(per[mt]["total"]) + 1
 		var a := int(answers[i]) if i < answers.size() else -1
 		if a == int(item["a"]):
 			benar += 1
 			per[mt]["benar"] = int(per[mt]["benar"]) + 1
-	var total := items.size()
+	var total := test_items.size()
 	var nilai := int(round(float(benar) / float(total) * 100.0)) if total > 0 else 0
 	return {
 		"nilai": nilai,
