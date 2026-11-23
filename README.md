@@ -240,12 +240,10 @@ Sprite **96x136 per frame**, 4 arah × 3 frame, gaya chibi kartun halus (bukan p
 
 ## 7. Aset
 
-Seluruh aset peta, UI, karakter, dan properti dibuat khusus untuk proyek ini lewat skrip di `tools/` (bukan aset pihak ketiga, tidak ada lisensi yang dilanggar):
+Aset peta, UI, dan properti dibuat khusus untuk proyek ini lewat skrip di `tools/`. Karakter utama diolah dari gambar pratinjau yang diberikan: tiap pose dipotong, latar dan label dibuang, lalu frame disusun ulang ke kanvas seragam.
 
-- `assets/sprites/mc/idle_00..09.png` + `run_00..09.png` — **karakter utama (MC) baru dari
-  kelompok**: 10 frame idle + 10 frame run, dinormalkan ke kanvas 512×512 dengan kaki di dasar,
-  lalu dipakai `scripts/player.gd` (animasi `idle`/`run`, `flip_h` untuk arah kiri).
-  `assets/sprites/mc/portrait.png` dipakai layar judul dan potret dialog.
+- `assets/sprites/mc2/idle_<arah>.png` + `walk_<arah>_00..11.png` — **karakter utama (MC)** dengan empat arah hadap (depan, belakang, kiri, kanan): 1 pose diam dan 12 pose jalan per arah, kanvas seragam 96×160 dengan kaki di dasar. `scripts/player.gd` memutar `idle_<arah>` / `walk_<arah>`.
+  `assets/sprites/mc/portrait.png` (dari pose depan) dipakai layar judul dan potret dialog. Berkas lama `mc/idle_*.png` dan `mc/run_*.png` masih ada sebagai arsip dan tidak dipakai.
 - `assets/sprites/hero.png` — sprite lama 96×136 (masih ada sebagai cadangan/arsip).
 - `assets/sprites/props/sign_toko.png` — plang TOKO untuk kios Pedagang, teks dijaga tidak terbalik.
 - `assets/sprites/npc_*.png` — kepala kota, peneliti, penjaga, pedagang (sel per 96×136).

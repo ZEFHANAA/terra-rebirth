@@ -385,7 +385,7 @@ func _run_demo(kind: String) -> void:
 			dialog.visible = false
 			if _world and _world.player:
 				_world.player.position = Vector2(793, 240 - 26)
-				_world.player._sprite.play("idle")
+				_world.player._sprite.play("idle_up")
 				_world.player.can_move = false
 				_world.camera.position = Vector2(793, 240 - 80)
 		"kanan":
@@ -394,7 +394,7 @@ func _run_demo(kind: String) -> void:
 			dialog.visible = false
 			if _world and _world.player:
 				_world.player.position = _world.tile_center(24, 10)
-				_world.player._sprite.play("run")
+				_world.player._sprite.play("walk_right")
 				_world.player._sprite.pause()
 				_world.player._sprite.frame = 0
 				_world.player.can_move = false
@@ -404,7 +404,7 @@ func _run_demo(kind: String) -> void:
 			dialog.visible = false
 			if _world and _world.player:
 				_world.player.position = _world.tile_center(24, 10)
-				_world.player._sprite.play("idle")
+				_world.player._sprite.play("idle_down")
 				_world.player._sprite.pause()
 				_world.player.can_move = false
 		"jalan":

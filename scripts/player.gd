@@ -1,21 +1,20 @@
 extends CharacterBody2D
-## Karakter pemain (MC) memakai aset Idle & Run dari kelompok:
-## assets/sprites/mc/idle_00..09.png dan run_00..09.png (kanvas 512x512, kaki di dasar).
-## Sprite menghadap samping, jadi arah atas/bawah tetap memakai hadap terakhir (flip_h).
+## Karakter pemain (MC) memakai aset chibi 4 arah dari pratinjau yang diolah:
+## assets/sprites/mc2/idle_<arah>.png dan walk_<arah>_00..11.png.
+## Kanvas seragam 96x160, kaki di dasar; keempat arah digambar terpisah.
 
 const SPEED := 190.0
-const MC_DIR := "res://assets/sprites/mc/"
-const IDLE_COUNT := 10
-const RUN_COUNT := 10
-## 512 px kanvas -> tinggi karakter tampil ~131 px (dulu 144 px), jadi 0.27.
-const MC_SCALE := 0.27
-const MC_HALF := 256.0
+const MC_DIR := "res://assets/sprites/mc2/"
+const MC_DIRS := ["down", "up", "left", "right"]
+const WALK_FRAMES := 12
+const MC_SCALE := 0.84
+## Tinggi kanvas (160) dipakai untuk menempelkan kaki sprite di y = 8.
+const MC_HALF_H := 160.0
 
 var can_move := true
 var facing := "down"
 
 var _sprite: AnimatedSprite2D
-var _hadap := 1.0  ## 1 = menghadap kanan, -1 = kiri
 
 func _ready() -> void:
 	var shape := CollisionShape2D.new()
@@ -27,10 +26,10 @@ func _ready() -> void:
 
 	_sprite = AnimatedSprite2D.new()
 	_sprite.sprite_frames = _build_frames()
-	_sprite.animation = "idle"
+	_sprite.animation = "idle_down"
 	_sprite.scale = Vector2(MC_SCALE, MC_SCALE)
 	# Kaki (dasar kanvas) ditempel di y = 8, sama seperti sprite lama.
-	_sprite.position = Vector2(0, 8.0 - MC_HALF * MC_SCALE)
+	_sprite.position = Vector2(0, 8.0 - MC_HALF_H * MC_SCALE)
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(_sprite)
 	z_index = 0
@@ -38,25 +37,26 @@ func _ready() -> void:
 func _build_frames() -> SpriteFrames:
 	var sf := SpriteFrames.new()
 	sf.remove_animation("default")
+	for arah in MC_DIRS:
+		var idle_name := "idle_%s" % arah
+		sf.add_animation(idle_name)
+		sf.set_animation_speed(idle_name, 3.0)
+		sf.set_animation_loop(idle_name, true)
+		sf.add_frame(idle_name, load("%sidle_%s.png" % [MC_DIR, arah]))
 
-	sf.add_animation("idle")
-	sf.set_animation_speed("idle", 6.0)
-	sf.set_animation_loop("idle", true)
-	for i in range(IDLE_COUNT):
-		sf.add_frame("idle", load("%sidle_%02d.png" % [MC_DIR, i]))
-
-	sf.add_animation("run")
-	sf.set_animation_speed("run", 14.0)
-	sf.set_animation_loop("run", true)
-	for i in range(RUN_COUNT):
-		sf.add_frame("run", load("%srun_%02d.png" % [MC_DIR, i]))
+		var walk_name := "walk_%s" % arah
+		sf.add_animation(walk_name)
+		sf.set_animation_speed(walk_name, 12.0)
+		sf.set_animation_loop(walk_name, true)
+		for i in range(WALK_FRAMES):
+			sf.add_frame(walk_name, load("%swalk_%s_%02d.png" % [MC_DIR, arah, i]))
 	return sf
 
 func _physics_process(_delta: float) -> void:
 	if not can_move:
 		velocity = Vector2.ZERO
 		move_and_slide()
-		_sprite.play("idle")
+		_sprite.play("idle_%s" % facing)
 		return
 
 	var v := Vector2.ZERO
@@ -75,12 +75,9 @@ func _physics_process(_delta: float) -> void:
 			facing = "right" if v.x > 0 else "left"
 		else:
 			facing = "down" if v.y > 0 else "up"
-		if absf(v.x) > 0.01:
-			_hadap = signf(v.x)
-		_sprite.play("run")
+		_sprite.play("walk_%s" % facing)
 	else:
-		_sprite.play("idle")
+		_sprite.play("idle_%s" % facing)
 
-	_sprite.flip_h = _hadap < 0.0
 	velocity = v * SPEED
 	move_and_slide()
