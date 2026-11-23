@@ -977,25 +977,7 @@ def paint_props(img, g, theme, seed):
     if NOBAKE:
         # Properti (pohon, gedung, mesin) digambar scripts/world.gd sebagai
         # sprite dari <map>.props.json; PNG peta hanya berisi tanah + kolam.
-        if theme == "kota":
-            # patung air mancur di pulau batu tengah kolam (28..31 x 16..20)
-            th = PAL[theme]
-            fx, fy = 30 * T - T // 2, 18 * T + T // 2
-            d.ellipse([fx - 14, fy - 5, fx + 14, fy + 3], fill=th["stone"][0])
-            d.rectangle([fx - 10, fy - 14, fx + 10, fy - 4], fill=th["stone"][0])
-            d.rectangle([fx - 10, fy - 14, fx + 10, fy - 11], fill=th["stone"][2])
-            d.rectangle([fx - 4, fy - 26, fx + 4, fy - 14], fill=th["stone"][1])
-            d.ellipse([fx - 6, fy - 33, fx + 6, fy - 23], fill=th["stone"][2])
-            d.point((fx - 2, fy - 29), fill=th["stone"][0])
-            d.point((fx + 3, fy - 29), fill=th["stone"][0])
-            # pancuran: air memancar lalu jatuh ke kolam
-            for r, a in ((3, 255), (2, 200)):
-                d.ellipse([fx - r, fy - 44 - r, fx + r, fy - 44 + r],
-                          fill=th["water"][3] if len(th["water"]) > 3 else th["water"][2])
-            d.arc([fx - 30, fy - 48, fx - 6, fy - 26], 195, 330, fill=th["water"][2], width=2)
-            d.arc([fx + 6, fy - 48, fx + 30, fy - 26], 210, 345, fill=th["water"][2], width=2)
-            d.line([(fx - 26, fy - 26), (fx - 26, fy - 16)], fill=th["water"][2])
-            d.line([(fx + 26, fy - 26), (fx + 26, fy - 16)], fill=th["water"][2])
+        # Air mancur kota dirender sebagai properti sprite terpisah.
         if theme == "danau":
             # tiang penyangga dermaga supaya tidak terlihat menempel di air
             wood_d, wood_l = (74, 52, 34), (120, 88, 58)

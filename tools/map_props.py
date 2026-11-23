@@ -23,7 +23,7 @@ H = {
     "bldg_house": 190, "bldg_shop": 172, "bldg_office": 200, "hall": 205,
     "machine": 92, "conveyor": 66, "pipe": 78, "tank": 112, "crates": 74,
     "crate": 48, "chimney": 150, "pillar": 118, "pillar_broken": 66,
-    "house": 250, "flag": 150, "sign_toko": 150, "banner_red": 150, "banner_blue": 150, "campfire": 90, "fence_h": 90, "fence_v": 90, "relief": 88, "stone_tower": 236, "well": 120, "tent": 130, "windmill": 240, "castle_sq": 200, "castle_rnd": 200, "core": 140, "server": 92, "terminal": 78, "pylon": 128,
+    "house": 250, "flag": 150, "sign_toko": 150, "banner_red": 150, "banner_blue": 150, "campfire": 90, "fountain": 142, "fence_h": 90, "fence_v": 90, "relief": 88, "stone_tower": 236, "well": 120, "tent": 130, "windmill": 240, "castle_sq": 200, "castle_rnd": 200, "core": 140, "server": 92, "terminal": 78, "pylon": 128,
 }
 
 
@@ -105,6 +105,10 @@ def build(name, g):
         for (x, y, w, h) in rects(g, "B"):
             k, hh = kavling.get((x, y), ("house", 240))
             put(items, k, x + w // 2 - 0.5, y + h - 1, hh, rnd)
+        # Air mancur berada di pulau batu tengah kolam plaza.
+        items.append({"t": "fountain", "n": "fountain",
+                      "x": 30 * T, "y": 18 * T + T * 0.5,
+                      "h": float(H["fountain"])})
         # lampu di tepi plaza
         for (x, y) in [(21, 11), (38, 11), (21, 26), (38, 26), (24, 18), (35, 20)]:
             if open_cell(g, x, y):

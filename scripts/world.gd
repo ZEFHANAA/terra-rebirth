@@ -99,13 +99,15 @@ func _build_props() -> void:
 		var sc := h / float(tex.get_height())
 		var spr := Sprite2D.new()
 		spr.texture = tex
-		spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if str(it.get("n", "")) == "fountain" else CanvasItem.TEXTURE_FILTER_LINEAR
 		spr.centered = true
 		spr.offset = Vector2(0, -tex.get_height() * 0.5)
 		spr.scale = Vector2(sc, sc)
 		spr.flip_h = bool(it.get("f", false))
 		spr.position = Vector2(float(it.get("x", 0.0)), float(it.get("y", 0.0)))
 		actors.add_child(spr)
+		if str(it.get("n", "")) == "fountain":
+			_add_fountain_effect(spr)
 		_add_prop_body(str(it.get("n", "tree_big")), spr.position)
 		if str(it.get("n", "")) in ["tree_big", "bush"]:
 			prop_fade.append(spr)
@@ -135,6 +137,12 @@ func _add_prop_body(kind: String, pos: Vector2) -> void:
 		"windmill", "stone_tower", "watchtower":
 			size = Vector2(100, 44)
 			off = -20.0
+		"fountain":
+			size = Vector2(58, 22)
+			off = -11.0
+		"well":
+			size = Vector2(78, 42)
+			off = -22.0
 		_:
 			return
 	var body := StaticBody2D.new()
@@ -198,6 +206,41 @@ func _build_collisions() -> void:
 				x += 1
 
 static var _shadow_tex: Texture2D = null
+static var _water_drop_tex: Texture2D = null
+
+func _water_drop_texture() -> Texture2D:
+	if _water_drop_tex != null:
+		return _water_drop_tex
+	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	var drop := Color(0.42, 0.88, 1.0, 0.95)
+	var glint := Color(0.88, 0.98, 1.0, 1.0)
+	for p in [Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1), Vector2i(4, 1),
+		Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 2), Vector2i(5, 2),
+		Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3),
+		Vector2i(2, 4), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5)]:
+		img.set_pixel(p.x, p.y, glint if p == Vector2i(2, 2) else drop)
+	_water_drop_tex = ImageTexture.create_from_image(img)
+	return _water_drop_tex
+
+func _add_fountain_effect(fountain: Sprite2D) -> void:
+	var spray := CPUParticles2D.new()
+	spray.name = "FountainSpray"
+	spray.position = Vector2(0, -116)
+	spray.texture = _water_drop_texture()
+	spray.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	spray.amount = 10
+	spray.lifetime = 0.9
+	spray.preprocess = 0.45
+	spray.emitting = true
+	spray.direction = Vector2(0, -1)
+	spray.spread = 32.0
+	spray.gravity = Vector2(0, 190)
+	spray.initial_velocity_min = 42.0
+	spray.initial_velocity_max = 68.0
+	spray.scale_amount_min = 0.55
+	spray.scale_amount_max = 0.9
+	spray.color = Color(0.55, 0.9, 1.0, 0.92)
+	fountain.add_child(spray)
 
 ## Bayangan kontak lembut agar karakter tidak terlihat melayang.
 func _shadow_texture() -> Texture2D:
