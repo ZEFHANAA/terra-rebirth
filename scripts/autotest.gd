@@ -96,13 +96,16 @@ func run() -> void:
 
 	check(main.state == "playing", "state masuk ke playing")
 	check(not main.dialog.visible, "dialog tidak terbuka otomatis (harus dekati NPC)")
-	check(main._world.npcs.size() == 4, "Kota Unggul tetap punya 4 NPC")
-	check((Content.map_by_id("kota")["objects"] as Array).size() == 2, "Kota punya 2 objek pemicu quest")
+	check(main._world.npcs.size() == 6, "Kota Unggul punya 6 NPC")
+	check((Content.map_by_id("kota")["objects"] as Array).size() == 2, "Kota punya 2 objek baca-saja")
+	check((Content.map_by_id("kota")["challenges"] as Array).is_empty(), "Kota Unggul tidak punya tantangan")
+	check(not main.hud._quest_panel.visible, "panel Misi Aktif tersembunyi di Kota Unggul")
+	check(not main._world.portal_node.locked, "gerbang di Kota Unggul selalu terbuka")
 	for raw_map in Content.MAPS:
 		var mid: String = raw_map["id"]
 		if mid != "kota":
 			check((Content.npcs_of(raw_map) as Array).size() == 3, "%s punya 3 NPC" % mid)
-		check(not (Content.map_by_id(mid).get("objects", []) as Array).is_empty(), "%s punya pemicu quest berupa objek" % mid)
+		check(not (Content.map_by_id(mid).get("objects", []) as Array).is_empty(), "%s punya objek" % mid)
 		for npc in Content.npcs_of(raw_map):
 			check(str(npc.get("action", "")) != "quest", "%s: NPC bukan pemicu quest" % mid)
 			if str(npc.get("action", "")) == "materi":
@@ -110,16 +113,10 @@ func run() -> void:
 			else:
 				check(not (npc.get("dialog", []) as Array).is_empty(), "%s: NPC %s punya dialog" % [mid, npc.get("id")])
 
-	# --- NPC memberi materi, objek yang membuka quest
+	# --- NPC Kota memberi info hub, objek Kota bersifat baca-saja (tanpa quest)
 	main._on_talk_npc("kepala")
 	await wait(0.25)
-	check(main.dialog.visible, "dialog materi terbuka setelah bicara dengan NPC")
-	var city_lines: Array = main.dialog._lines
-	var ada_materi := false
-	for l in city_lines:
-		if str(l).begins_with("Materi "):
-			ada_materi = true
-	check(city_lines.size() > 2 and ada_materi, "NPC Kota bercerita dulu, materi tetap disampaikan")
+	check(main.dialog.visible, "dialog Kepala Kota terbuka")
 	for i in range(30):
 		if not main.dialog.visible:
 			break
@@ -129,14 +126,14 @@ func run() -> void:
 	check(not main.puzzle.visible, "dialog NPC tidak membuka quest")
 	main._on_inspect_object("kota-papan")
 	await wait(0.25)
+	check(main.dialog.visible, "Papan Pengumuman terbuka sebagai dialog baca-saja")
 	for i in range(10):
 		if not main.dialog.visible:
 			break
 		await press_e()
 		await wait(0.1)
 	await wait(0.25)
-	check(main.puzzle.visible, "quest terbuka dari objek peta")
-	check(main.puzzle._lesson_done, "panel quest tidak menampilkan materi terpisah dari NPC")
+	check(not main.puzzle.visible, "objek Kota Unggul bersifat baca-saja (tidak membuka panel tantangan)")
 
 	# --- pedagang: komponen perangkat dibeli di Kota Unggul (Tabel 2.4/2.6)
 	main.puzzle._on_close()
@@ -226,6 +223,8 @@ func run() -> void:
 	Game.components = {"sensor": true, "papan": true, "mcu": true, "daya": true}
 	for raw in Content.MAPS:
 		var mid: String = raw["id"]
+		if mid == "kota":
+			continue
 		main._load_map(mid)
 		await wait(0.3)
 		main.dialog.visible = false
@@ -247,14 +246,11 @@ func run() -> void:
 			await wait(0.2)
 		check(Game.done.has(str((mm["challenges"] as Array)[0]["id"])), "tantangan %s tercatat" % mid)
 
-	# --- aturan badge: satu quest tidak memberi badge
+	# --- aturan badge & akses Map 2: Hutan selalu terbuka dari awal
 	Game.reset()
-	Game.complete_challenge("kota-1", "kota")
-	check(Game.badges.is_empty(), "satu quest belum memberi badge")
-	check(not Game.map_unlocked("hutan"), "hutan terkunci sebelum quest pengantar selesai")
-	Game.complete_challenge("kota-2", "kota")
-	check(Game.badges.is_empty(), "Kota Unggul tidak memberi badge (Map 1 hub)")
-	check(Game.map_unlocked("hutan"), "hutan terbuka setelah seluruh quest Kota Unggul selesai")
+	check(Game.badges.is_empty(), "awal permainan belum punya badge")
+	check(Game.is_map_cleared("kota"), "Kota Unggul (hub) langsung dianggap terbuka gerbangnya")
+	check(Game.map_unlocked("hutan"), "hutan selalu terbuka tanpa quest pengantar")
 	check(not Game.map_unlocked("pabrik"), "pabrik terkunci tanpa badge Map 2")
 
 	var hutan_ch: Array = Content.map_by_id("hutan")["challenges"]
@@ -700,16 +696,20 @@ func _uji_tambahan() -> void:
 	var semua := true
 	for m in Content.MAPS:
 		var mid := str(m["id"])
-		if mid == "hutan":
-			continue   # Map 2 menunggu quest pengantar Map 1 (tanpa badge)
 		if not Game.map_unlocked(mid):
 			semua = false
-	check(semua, "map 3-6 terbuka setelah 4 badge dimiliki")
-	check(not Game.map_unlocked("hutan"), "hutan tetap menunggu quest pengantar Map 1")
-	Game.complete_challenge("kota-1", "kota")
-	Game.complete_challenge("kota-2", "kota")
-	check(Game.map_unlocked("hutan"), "hutan terbuka setelah quest pengantar selesai")
+	check(semua, "semua map terbuka setelah 4 badge dimiliki")
+	check(Game.map_unlocked("hutan"), "hutan selalu terbuka tanpa syarat quest")
 	check(Content.badge_total() == 4, "jumlah badge yang bisa diperoleh = 4")
+	# Save lama yang masih menyimpan kota-1 / kota-2 tetap aman dimuat
+	var save_lama := {"done": {"kota-1": true, "kota-2": true, "hutan-1": true}, "badges": [], "coins": 25}
+	var flama := FileAccess.open(Game.save_path, FileAccess.WRITE)
+	if flama:
+		flama.store_string(JSON.stringify(save_lama))
+		flama.close()
+	check(Game.load_game(), "save lama berisi kota-1/kota-2 berhasil dimuat")
+	check(Game.total_done() == 1, "total_done() tidak menghitung id tantangan kota yang sudah dihapus")
+	check(Game.map_unlocked("hutan"), "hutan tetap terbuka pada save lama")
 
 	# 9. jawaban kosong (-1) dihitung salah, bukan error
 	var kosong: Array = []
@@ -751,8 +751,6 @@ func _uji_tambahan() -> void:
 
 	# 11. uang hanya dari Map 2-Map 5 dan cukup untuk seluruh komponen
 	Game.reset()
-	Game.complete_challenge("kota-1", "kota")
-	Game.complete_challenge("kota-2", "kota")
 	check(Game.coins == 0, "Map 1 (hub) tidak memberi uang")
 	Game.complete_challenge("source-1", "source")
 	check(Game.coins == 0, "Map 6 (post-test) tidak memberi uang")
@@ -990,7 +988,7 @@ func _uji_jeda_jurnal() -> void:
 
 	# 10. Lensa Analisis: petunjuk ada untuk semua jenis, tidak pernah hangus
 	var contoh := {
-		"mcq": ["kota", "kota-1"],
+		"mcq": ["hutan", "hutan-b1"],
 		"build": ["hutan", "hutan-1"],
 		"order": ["hutan", "hutan-2"],
 		"cipher": ["candi", "candi-1"],
@@ -1398,7 +1396,7 @@ func _ui_audit() -> void:
 		% ("" if tumpang.is_empty() else " (%s)" % str(tumpang)))
 	# panel tantangan: satu contoh tiap jenis
 	var jenis_uji := [
-		{"m": "kota", "i": 0}, {"m": "hutan", "i": 0}, {"m": "hutan", "i": 1},
+		{"m": "hutan", "i": 5}, {"m": "hutan", "i": 0}, {"m": "hutan", "i": 1},
 		{"m": "candi", "i": 0}, {"m": "danau", "i": 0}, {"m": "danau", "i": 2},
 	]
 	var tak_muat: Array = []

@@ -130,7 +130,9 @@ func _card(m: Dictionary, idx: int) -> Control:
 	var desc := UiKit.label(str(m["desc"]), 13, Color("4a3a22") if unlocked else Color("5d5138"), 300)
 	v.add_child(desc)
 
-	var prog := UiKit.label("%d / %d tantangan" % [Game.map_done(str(m["id"])), Game.map_total(str(m["id"]))], 13, Color("6b5a3c") if unlocked else Color("5d5138"))
+	var total := Game.map_total(str(m["id"]))
+	var prog_text := ("%d / %d tantangan" % [Game.map_done(str(m["id"])), total]) if total > 0 else "Wilayah hub · Tanpa tantangan"
+	var prog := UiKit.label(prog_text, 13, Color("6b5a3c") if unlocked else Color("5d5138"))
 	v.add_child(prog)
 
 	var sp2 := Control.new()

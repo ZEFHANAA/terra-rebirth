@@ -201,7 +201,12 @@ func set_prompt(text: String) -> void:
 		prompt_changed.emit(text)
 
 func total_done() -> int:
-	return done.size()
+	var n := 0
+	for m in Content.MAPS:
+		for c in m.get("challenges", []):
+			if done.has(str(c["id"])):
+				n += 1
+	return n
 
 func map_done(map_id: String) -> int:
 	var m := Content.map_by_id(map_id)
@@ -215,7 +220,10 @@ func map_total(map_id: String) -> int:
 	return (Content.map_by_id(map_id).get("challenges", []) as Array).size()
 
 func is_map_cleared(map_id: String) -> bool:
-	return map_total(map_id) > 0 and map_done(map_id) >= map_total(map_id)
+	var total := map_total(map_id)
+	if total == 0:
+		return map_id == "kota"
+	return map_done(map_id) >= total
 
 # ------------------------------------------------------- nyawa & bank soal
 ## Nyawa tersisa pada satu wilayah.

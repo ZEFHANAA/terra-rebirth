@@ -704,8 +704,8 @@ func _animate_marks() -> void:
 		var active := _object_active(o)
 		(o["node"] as Node2D).visible = active
 		var om = o["mark"]
-		om.visible = active
-		if active:
+		om.visible = active and _object_is_quest(o)
+		if om.visible:
 			var obase: Vector2 = o["node"].position
 			om.position = obase + Vector2(-om.size.x * 0.5, -78 + bob)
 	if _focus != null:
@@ -740,7 +740,7 @@ func next_objective() -> Dictionary:
 	var best := {}
 	var best_d := 1e9
 	for o in objects:
-		if not _object_active(o):
+		if not _object_active(o) or not _object_is_quest(o):
 			continue
 		var node := o["node"] as Node2D
 		if node == null:
@@ -799,6 +799,10 @@ func _marked_target_of(target: String) -> Dictionary:
 			return {}
 		return {"pos": nnode.position, "name": str(n.get("name", "NPC"))}
 	return {}
+
+func _object_is_quest(o: Dictionary) -> bool:
+	var data: Dictionary = o["data"]
+	return data.has("challenge") or bool(data.get("bank", false)) or bool(data.get("puzzle", false))
 
 func _object_active(o: Dictionary) -> bool:
 	var data: Dictionary = o["data"]

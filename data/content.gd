@@ -106,7 +106,9 @@ const COMPONENT_TOTAL := 4
 
 ## Titik awal pemain per peta (dipakai world.gd dan audit_konten.gd).
 const SPAWNS := {
-	"kota": Vector2(30, 22),
+	# Spawn di jalur selatan plaza. Posisi lama (25, 19) terlalu dekat
+	# kolam air mancur dan membuat pemain terasa terjepit setelah intro.
+	"kota": Vector2(20, 23),
 	"hutan": Vector2(18, 18),
 	"pabrik": Vector2(19, 18),
 	"candi": Vector2(19, 19),
@@ -143,14 +145,19 @@ const SHOP := {
 const MAPS := [
 	{
 		"id": "kota", "name": "Kota Unggul", "material": "Tutorial & Hub",
-		"desc": "Pusat kota. Temui Kepala Kota, terima quest pengantar, dan pelajari aturan main.",
+		"desc": "Pusat kota untuk bersiap, berbelanja komponen, dan mempelajari aturan main sebelum menjelajah.",
 		"badge": "", "badge_name": "",
-		"npc_name": "Kepala Kota", "npc_role": "Pemberi tugas", "npc_sprite": "kepala_kota",
+		"npc_name": "Kepala Kota", "npc_role": "Kepala Kota", "npc_sprite": "kepala_kota",
 		"npcs": [
-			{"id": "kepala", "name": "Kepala Kota", "role": "Pengajar pengantar", "sprite": "kepala_kota", "x": 30, "y": 12, "action": "materi",
+			{"id": "kepala", "name": "Kepala Kota", "role": "Kepala Kota", "sprite": "kepala_kota", "x": 30, "y": 12, "action": "info",
 				"story": [
 					"Aku sudah tiga puluh tahun mencatat setiap sumur di kota ini.",
 					"Anakku dulu yang memeriksa kualitas air; sekarang giliranmu.",
+				],
+				"dialog": [
+					"Selamat datang di Kota Unggul. Wilayah ini adalah pusat persiapan sebelum kamu menelusuri empat wilayah materi.",
+					"Di sini kamu bisa menemui Pedagang untuk membeli Lensa Analisis dan komponen perangkat, atau memeriksa Papan Pengumuman dan Buku Aturan.",
+					"Gerbang menuju Hutan Pengetahuan di timur sudah terbuka. Berjalanlah ke sana kapan saja kamu siap."
 				]},
 			{"id": "gerbang", "name": "Penjaga Gerbang", "role": "Penjaga jalan", "sprite": "penjaga_gerbang", "x": 52, "y": 18, "action": "gate",
 				"story": [
@@ -205,43 +212,18 @@ const MAPS := [
 			"Aturannya sederhana: selesaikan seluruh quest di satu wilayah, dan kamu memperoleh badge wilayah itu. Badge itulah yang membuka jalan berikutnya. Satu quest saja belum cukup."
 		],
 		"objects": [
-			{"id": "kota-papan", "label": "Papan Pengumuman", "x": 33, "y": 16, "challenge": "kota-1", "icon": "sign",
+			{"id": "kota-papan", "label": "Papan Pengumuman", "x": 33, "y": 16, "icon": "sign",
 				"text": [
-					"Papan ini berisi pengumuman warga: siapa yang boleh masuk wilayah, apa syaratnya, dan bagaimana data disimpan.",
-					"Aturan aksesnya ditulis sebagai baris tabel. Kalau kamu bisa membacanya, kamu bisa menyusun pengumuman yang benar."
+					"Papan Pengumuman Kota: setiap wilayah materi menjaga satu badge sebagai kunci akses menuju wilayah berikutnya.",
+					"Gerbang menuju Hutan Pengetahuan di timur sudah terbuka tanpa syarat. Persiapkan dirimu di toko sebelum berangkat."
 				]},
-			{"id": "kota-buku", "label": "Buku Aturan", "x": 44, "y": 20, "challenge": "kota-2", "icon": "sign",
+			{"id": "kota-buku", "label": "Buku Aturan", "x": 44, "y": 20, "icon": "sign",
 				"text": [
-					"Buku ini mencatat urutan pemeriksaan sebelum seseorang diizinkan masuk ke wilayah baru.",
-					"Setiap langkah punya syarat. Kalau urutannya salah, pemeriksaan berhenti di tengah jalan."
+					"Peraturan Wilayah: bicaralah dengan NPC pengajar untuk mempelajari materi, lalu periksa objek bertanda ? untuk memulai tantangan.",
+					"Setiap wilayah memberi 3 nyawa. Jika nyawa habis, progres tantangan dan badge direset dan kamu kembali ke Kota Unggul, sementara uang serta barang tetap tersimpan."
 				]},
 		],
-		"challenges": [
-			{
-				"id": "kota-1", "title": "Aturan Perjalanan", "type": "mcq",
-				"prompt": "Kepala Kota menjelaskan syarat membuka wilayah baru. Manakah yang benar?",
-				"options": [
-					"Menyelesaikan seluruh quest wilayah dan memperoleh badge wilayah tersebut",
-					"Membeli item pembuka di pedagang kota",
-					"Berbicara dengan semua NPC yang ada di kota",
-					"Menunggu waktu permainan berjalan cukup lama"
-				],
-				"answer": 0,
-				"explain": "Akses wilayah ditentukan oleh badge wilayah sebelumnya. Badge baru diberikan setelah seluruh quest pada satu wilayah selesai, sehingga progres permainan mengikuti urutan penguasaan materi."
-			},
-			{
-				"id": "kota-2", "title": "Arti Sebuah Badge", "type": "mcq",
-				"prompt": "Dalam rancangan Terra Rebirth, badge berfungsi sebagai apa?",
-				"options": [
-					"Hiasan profil tanpa pengaruh pada permainan",
-					"Bukti penguasaan konsep satu wilayah yang membuka wilayah berikutnya",
-					"Mata uang untuk membeli item di toko",
-					"Pengganti nilai akhir mata kuliah"
-				],
-				"answer": 1,
-				"explain": "Badge bukan atribut tambahan. Badge diikat pada kriteria kompetensi di akhir wilayah dan berfungsi sebagai kunci akses, sehingga progres permainan mengikuti urutan penguasaan materi."
-			}
-		]
+		"challenges": []
 	},
 	{
 		"id": "hutan", "name": "Hutan Pengetahuan", "material": "Basis Data",
