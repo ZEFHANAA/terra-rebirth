@@ -100,18 +100,19 @@ func open(npc_name: String, role: String, lines: Array, sprite_key: String = "")
 
 
 func _set_portrait(sprite_key: String) -> void:
-	var path := "res://assets/sprites/mc/portrait.png"
+	var path := "res://assets/sprites/player_hero_v2_spritesheet.png"
 	if sprite_key != "":
 		path = "res://assets/sprites/npc_%s.png" % sprite_key
 	if not ResourceLoader.exists(path):
-		path = "res://assets/sprites/mc/portrait.png"
+		path = "res://assets/sprites/player_hero_v2_spritesheet.png"
 	var tex: Texture2D = load(path)
-	if path.ends_with("portrait.png"):
-		# Potret MC berupa satu gambar utuh (bukan spritesheet).
-		_portrait.texture = tex
+	if path.ends_with("player_hero_v2_spritesheet.png"):
+		var mc_frame := AtlasTexture.new()
+		mc_frame.atlas = tex
+		mc_frame.region = Rect2(0, 0, 32, 32)
+		_portrait.texture = mc_frame
 		return
-	# Ambil SATU frame dari sheet, bukan seluruh sheet. Sheet hero 384x576
-	# (frame 96x144); sheet NPC baru 72x128 (3 kolom x 4 baris, frame 24x32).
+	# Ambil SATU frame dari sheet NPC, bukan seluruh sheet.
 	var fw := 96.0
 	var fh := 144.0
 	if tex.get_width() < 384:

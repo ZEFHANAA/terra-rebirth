@@ -226,12 +226,16 @@ func set_map(m: Dictionary) -> void:
 	refresh()
 
 func refresh() -> void:
+	var total := Game.map_total(_map_id) if _map_id != "" else 0
 	if _map_id != "":
 		var mm := Content.map_by_id(_map_id)
-		_map_sub.text = "%s  ·  %d/%d tantangan" % [str(mm.get("material", "")), Game.map_done(_map_id), Game.map_total(_map_id)]
+		var mat := str(mm.get("material", ""))
+		_map_sub.text = ("%s  ·  %d/%d tantangan" % [mat, Game.map_done(_map_id), total]) if total > 0 else mat
 	_badge_text.text = "%d / %d  ›" % [Game.badges.size(), BADGE_ORDER.size()]
 	_coins.text = "◆  Uang %d" % Game.coins
-	_lives.text = "Nyawa %d/%d" % [Game.lives_left(_map_id), Content.LIVES_PER_MAP]
+	_lives.visible = total > 0
+	if total > 0:
+		_lives.text = "Nyawa %d/%d" % [Game.lives_left(_map_id), Content.LIVES_PER_MAP]
 	_refresh_quest()
 
 	for i in range(_badges.get_child_count()):

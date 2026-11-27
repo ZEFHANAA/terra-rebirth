@@ -1,15 +1,11 @@
 extends CharacterBody2D
-## Karakter pemain (MC) memakai aset chibi 4 arah dari pratinjau yang diolah:
-## assets/sprites/mc2/idle_<arah>.png dan walk_<arah>_00..11.png.
-## Kanvas seragam 96x160, kaki di dasar; keempat arah digambar terpisah.
+## Karakter pemain memakai spritesheet transparan 3x4 dari player_hero_v2_spritesheet.png.
+## Baris: bawah, kiri, kanan, atas. Kolom: tiga frame gerak.
 
 const SPEED := 190.0
-const MC_DIR := "res://assets/sprites/mc2/"
-const MC_DIRS := ["down", "up", "left", "right"]
-const WALK_FRAMES := 12
-const MC_SCALE := 0.84
-## Tinggi kanvas (160) dipakai untuk menempelkan kaki sprite di y = 8.
-const MC_HALF_H := 160.0
+const MC_SHEET := "res://assets/sprites/player_hero_v2_spritesheet.png"
+const MC_SCALE := 3.0
+const MC_FRAME_SIZE := Vector2(32, 32)
 
 var can_move := true
 var facing := "down"
@@ -28,28 +24,38 @@ func _ready() -> void:
 	_sprite.sprite_frames = _build_frames()
 	_sprite.animation = "idle_down"
 	_sprite.scale = Vector2(MC_SCALE, MC_SCALE)
-	# Kaki (dasar kanvas) ditempel di y = 8, sama seperti sprite lama.
-	_sprite.position = Vector2(0, 8.0 - MC_HALF_H * MC_SCALE)
-	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	# Pusatkan frame sehingga kaki berada dekat y = 8.
+	_sprite.position = Vector2(0, 8.0 - MC_FRAME_SIZE.y * MC_SCALE * 0.5)
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(_sprite)
 	z_index = 0
 
 func _build_frames() -> SpriteFrames:
 	var sf := SpriteFrames.new()
 	sf.remove_animation("default")
-	for arah in MC_DIRS:
+	var tex: Texture2D = load(MC_SHEET)
+	var atlas_frames: Array[AtlasTexture] = []
+	for row in range(4):
+		for col in range(3):
+			var frame := AtlasTexture.new()
+			frame.atlas = tex
+			frame.region = Rect2(col * MC_FRAME_SIZE.x, row * MC_FRAME_SIZE.y, MC_FRAME_SIZE.x, MC_FRAME_SIZE.y)
+			atlas_frames.append(frame)
+	var directions := {"down": 0, "left": 1, "right": 2, "up": 3}
+	for arah in directions:
+		var row: int = directions[arah]
 		var idle_name := "idle_%s" % arah
 		sf.add_animation(idle_name)
 		sf.set_animation_speed(idle_name, 3.0)
 		sf.set_animation_loop(idle_name, true)
-		sf.add_frame(idle_name, load("%sidle_%s.png" % [MC_DIR, arah]))
+		sf.add_frame(idle_name, atlas_frames[row * 3 + 1])
 
 		var walk_name := "walk_%s" % arah
 		sf.add_animation(walk_name)
-		sf.set_animation_speed(walk_name, 12.0)
+		sf.set_animation_speed(walk_name, 7.0)
 		sf.set_animation_loop(walk_name, true)
-		for i in range(WALK_FRAMES):
-			sf.add_frame(walk_name, load("%swalk_%s_%02d.png" % [MC_DIR, arah, i]))
+		for col in range(3):
+			sf.add_frame(walk_name, atlas_frames[row * 3 + col])
 	return sf
 
 func _physics_process(_delta: float) -> void:

@@ -174,11 +174,14 @@ func _fill_right() -> void:
 	# judul diberi ruang ekstra agar tidak terpotong baris berikutnya.
 	judul.custom_minimum_size = Vector2(0, 26)
 	_right.add_child(judul)
-	var sub := "%s  ·  %d/%d tantangan  ·  nyawa %d/%d" % [
-		str(m.get("material", "")), Game.map_done(_sel), Game.map_total(_sel),
-		Game.lives_left(_sel), Content.LIVES_PER_MAP]
+	var total := Game.map_total(_sel)
+	var sub := ("%s  ·  %d/%d tantangan  ·  nyawa %d/%d" % [
+		str(m.get("material", "")), Game.map_done(_sel), total,
+		Game.lives_left(_sel), Content.LIVES_PER_MAP]) if total > 0 else ("%s  ·  Wilayah hub" % str(m.get("material", "")))
 	_right.add_child(UiKit.label(sub, 12, UiKit.MUTED))
-	if cleared:
+	if total == 0:
+		_right.add_child(UiKit.label("Wilayah hub tanpa tantangan atau badge. Gerbang menuju wilayah berikutnya selalu terbuka.", 12, UiKit.ACCENT, 700))
+	elif cleared:
 		_right.add_child(UiKit.label("Wilayah ini sudah selesai — badge %s sudah dikantongi." %
 			str(m.get("badge_name", "")), 12, UiKit.ACCENT, 700))
 	elif not unlocked:

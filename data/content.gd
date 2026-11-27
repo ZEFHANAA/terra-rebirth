@@ -106,7 +106,9 @@ const COMPONENT_TOTAL := 4
 
 ## Titik awal pemain per peta (dipakai world.gd dan audit_konten.gd).
 const SPAWNS := {
-	"kota": Vector2(30, 22),
+	# Spawn di jalur selatan plaza. Posisi lama (25, 19) terlalu dekat
+	# kolam air mancur dan membuat pemain terasa terjepit setelah intro.
+	"kota": Vector2(20, 23),
 	"hutan": Vector2(18, 18),
 	"pabrik": Vector2(19, 18),
 	"candi": Vector2(19, 19),
@@ -143,16 +145,21 @@ const SHOP := {
 const MAPS := [
 	{
 		"id": "kota", "name": "Kota Unggul", "material": "Tutorial & Hub",
-		"desc": "Pusat kota. Temui Kepala Kota, terima quest pengantar, dan pelajari aturan main.",
+		"desc": "Pusat kota untuk bersiap, berbelanja komponen, dan mempelajari aturan main sebelum menjelajah.",
 		"badge": "", "badge_name": "",
-		"npc_name": "Kepala Kota", "npc_role": "Pemberi tugas", "npc_sprite": "kepala",
+		"npc_name": "Kepala Kota", "npc_role": "Kepala Kota", "npc_sprite": "kepala_kota",
 		"npcs": [
-			{"id": "kepala", "name": "Kepala Kota", "role": "Pengajar pengantar", "sprite": "kepala", "x": 30, "y": 12, "action": "materi",
+			{"id": "kepala", "name": "Kepala Kota", "role": "Kepala Kota", "sprite": "kepala_kota", "x": 30, "y": 12, "action": "info",
 				"story": [
 					"Aku sudah tiga puluh tahun mencatat setiap sumur di kota ini.",
 					"Anakku dulu yang memeriksa kualitas air; sekarang giliranmu.",
+				],
+				"dialog": [
+					"Selamat datang di Kota Unggul. Wilayah ini adalah pusat persiapan sebelum kamu menelusuri empat wilayah materi.",
+					"Di sini kamu bisa menemui Pedagang untuk membeli Lensa Analisis dan komponen perangkat, atau memeriksa Papan Pengumuman dan Buku Aturan.",
+					"Gerbang menuju Hutan Pengetahuan di timur sudah terbuka. Berjalanlah ke sana kapan saja kamu siap."
 				]},
-			{"id": "gerbang", "name": "Penjaga Gerbang", "role": "Penjaga jalan", "sprite": "penjaga", "x": 52, "y": 18, "action": "gate",
+			{"id": "gerbang", "name": "Penjaga Gerbang", "role": "Penjaga jalan", "sprite": "penjaga_gerbang", "x": 52, "y": 18, "action": "gate",
 				"story": [
 					"Gerbang ini hanya terbuka bagi yang membawa badge wilayah sebelumnya.",
 					"Aku tidak bosan mengulanginya setiap hari.",
@@ -171,7 +178,7 @@ const MAPS := [
 					"Aku juga menyimpan komponen perangkat pemantau air: sensor pH, papan rangkaian dan kabel jumper, mikrokontroler ber-WiFi, serta sumber daya. Tanpa keempatnya, perakitan di Danau Citra tidak akan jalan.",
 					"Lensa Analisis paling laris. Sekali pakai, tapi cukup untuk membuka petunjuk saat kamu benar-benar buntu."
 				]},
-			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti", "x": 40, "y": 22, "action": "info",
+			{"id": "peneliti", "name": "Peneliti Lingkungan", "role": "Peneliti", "sprite": "peneliti_lingkungan", "x": 40, "y": 22, "action": "info",
 				"story": [
 					"Aku mengukur pH air kota setiap pagi; angkanya terus turun.",
 					"Kota butuh orang yang paham data, bukan cuma berani.",
@@ -181,6 +188,22 @@ const MAPS := [
 					"Karena itu perjalananmu disusun berurutan: Basis Data di Hutan, Sistem Operasi di Pabrik, Kriptografi di Candi, lalu IoT di Danau. Yang terakhir adalah sumbernya.",
 					"Jangan lompat urutan. Konsep di wilayah awal dipakai lagi di wilayah akhir."
 				]},
+			{"id": "penjaga_keamanan_1", "name": "Penjaga Keamanan 1", "role": "Patroli Kota", "sprite": "penjaga_keamanan_1", "x": 18, "y": 11, "action": "info",
+				"patrol": [[18, 11], [22, 11], [22, 13], [18, 13]], "patrol_speed": 38,
+				"story": ["Halo. Kabar baik, kota cukup tenang hari ini.", "Aku sedang berkeliling memastikan jalan dan rumah warga aman."],
+				"dialog": [
+					"Kalau kamu melihat orang mencurigakan atau menemukan jejak penjahat, segera laporkan kepadaku.",
+					"Sejauh ini belum ada penjahat yang terlihat. Tapi aku tetap patroli, siapa tahu ada sesuatu di sudut kota.",
+					"Kadang aku juga lupa sudah melewati jalan ini berapa kali. Yang penting warga merasa aman."
+				]},
+			{"id": "penjaga_keamanan_2", "name": "Penjaga Keamanan 2", "role": "Patroli Kota", "sprite": "penjaga_keamanan_2", "x": 38, "y": 11, "action": "info",
+				"patrol": [[38, 11], [43, 11], [43, 13], [38, 13]], "patrol_speed": 34,
+				"story": ["Salam. Aku baik-baik saja, masih kuat berjaga.", "Lagi memeriksa keadaan sekitar. Ada yang bisa kubantu?"],
+				"dialog": [
+					"Kalau bertanya sedang apa, ya patroli seperti biasa. Belum ada kejadian yang perlu ditangani.",
+					"Penjahat? Belum ada laporan hari ini. Semoga tetap begitu, tapi mataku tetap terbuka.",
+					"Kalau kamu melihat sesuatu yang aneh, beri tahu penjaga terdekat. Kami biasanya tidak jauh—sedang berkeliling saja."
+				]},
 		],
 		"req_badge": "", "req_clear": "",
 		"intro": [
@@ -189,43 +212,18 @@ const MAPS := [
 			"Aturannya sederhana: selesaikan seluruh quest di satu wilayah, dan kamu memperoleh badge wilayah itu. Badge itulah yang membuka jalan berikutnya. Satu quest saja belum cukup."
 		],
 		"objects": [
-			{"id": "kota-papan", "label": "Papan Pengumuman", "x": 33, "y": 16, "challenge": "kota-1", "icon": "sign",
+			{"id": "kota-papan", "label": "Papan Pengumuman", "x": 33, "y": 16, "icon": "sign",
 				"text": [
-					"Papan ini berisi pengumuman warga: siapa yang boleh masuk wilayah, apa syaratnya, dan bagaimana data disimpan.",
-					"Aturan aksesnya ditulis sebagai baris tabel. Kalau kamu bisa membacanya, kamu bisa menyusun pengumuman yang benar."
+					"Papan Pengumuman Kota: setiap wilayah materi menjaga satu badge sebagai kunci akses menuju wilayah berikutnya.",
+					"Gerbang menuju Hutan Pengetahuan di timur sudah terbuka tanpa syarat. Persiapkan dirimu di toko sebelum berangkat."
 				]},
-			{"id": "kota-buku", "label": "Buku Aturan", "x": 44, "y": 20, "challenge": "kota-2", "icon": "sign",
+			{"id": "kota-buku", "label": "Buku Aturan", "x": 44, "y": 20, "icon": "sign",
 				"text": [
-					"Buku ini mencatat urutan pemeriksaan sebelum seseorang diizinkan masuk ke wilayah baru.",
-					"Setiap langkah punya syarat. Kalau urutannya salah, pemeriksaan berhenti di tengah jalan."
+					"Peraturan Wilayah: bicaralah dengan NPC pengajar untuk mempelajari materi, lalu periksa objek bertanda ? untuk memulai tantangan.",
+					"Setiap wilayah memberi 3 nyawa. Jika nyawa habis, progres tantangan dan badge direset dan kamu kembali ke Kota Unggul, sementara uang serta barang tetap tersimpan."
 				]},
 		],
-		"challenges": [
-			{
-				"id": "kota-1", "title": "Aturan Perjalanan", "type": "mcq",
-				"prompt": "Kepala Kota menjelaskan syarat membuka wilayah baru. Manakah yang benar?",
-				"options": [
-					"Menyelesaikan seluruh quest wilayah dan memperoleh badge wilayah tersebut",
-					"Membeli item pembuka di pedagang kota",
-					"Berbicara dengan semua NPC yang ada di kota",
-					"Menunggu waktu permainan berjalan cukup lama"
-				],
-				"answer": 0,
-				"explain": "Akses wilayah ditentukan oleh badge wilayah sebelumnya. Badge baru diberikan setelah seluruh quest pada satu wilayah selesai, sehingga progres permainan mengikuti urutan penguasaan materi."
-			},
-			{
-				"id": "kota-2", "title": "Arti Sebuah Badge", "type": "mcq",
-				"prompt": "Dalam rancangan Terra Rebirth, badge berfungsi sebagai apa?",
-				"options": [
-					"Hiasan profil tanpa pengaruh pada permainan",
-					"Bukti penguasaan konsep satu wilayah yang membuka wilayah berikutnya",
-					"Mata uang untuk membeli item di toko",
-					"Pengganti nilai akhir mata kuliah"
-				],
-				"answer": 1,
-				"explain": "Badge bukan atribut tambahan. Badge diikat pada kriteria kompetensi di akhir wilayah dan berfungsi sebagai kunci akses, sehingga progres permainan mengikuti urutan penguasaan materi."
-			}
-		]
+		"challenges": []
 	},
 	{
 		"id": "hutan", "name": "Hutan Pengetahuan", "material": "Basis Data",
@@ -916,7 +914,7 @@ static func items_by_ids(ids: Array) -> Array:
 	return out
 
 ## Memilih 5 soal per materi secara acak; hasilnya disimpan agar stabil saat save.
-static func posttest_ids(participant: String) -> Array:
+static func posttest_ids(_participant: String) -> Array:
 	var out: Array = []
 	for materi in MATERI:
 		var bank := bank_of(materi).duplicate()

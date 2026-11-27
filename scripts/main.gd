@@ -29,6 +29,8 @@ var _modal_layer: CanvasLayer
 var _fade: ColorRect
 var _toast: Label
 var _toast_tw: Tween
+var _intro_layer: CanvasLayer
+var _intro_active := false
 
 var hud: Control
 var dialog: Control
@@ -297,8 +299,6 @@ func _run_demo(kind: String) -> void:
 			_start_play("hutan")
 			await get_tree().create_timer(0.5).timeout
 			dialog.visible = false
-			Game.done["kota-1"] = true
-			Game.done["kota-2"] = true
 			Game.done["hutan-1"] = true
 			Game.done["hutan-2"] = true
 			Game.done["hutan-b1"] = true
@@ -569,14 +569,7 @@ func _demo_terbaru() -> void:
 	# jadi belok ke baris 23 dulu baru naik ke gerbang di timur.
 	for wp in [[20, 23], [36, 23], [50, 23], [55, 22], [56, 20]]:
 		await _demo_walk_to(int(wp[0]), int(wp[1]))
-	await get_tree().create_timer(3.0).timeout
-	await _demo_act("interact")          # toast: gerbang terkunci
-	await get_tree().create_timer(2.4).timeout
-	# Selesaikan dua quest kota — portal terbuka di depan mata (update live).
-	Game.complete_challenge("kota-1", "kota")
-	Game.complete_challenge("kota-2", "kota")
-	_on_map_completed("kota")
-	await get_tree().create_timer(4.0).timeout
+	await get_tree().create_timer(2.0).timeout
 	# Masuk lewat gerbang yang sudah terbuka (transisi asli ke Hutan).
 	await _demo_act("interact")
 	await get_tree().create_timer(4.5).timeout
@@ -1343,6 +1336,156 @@ func _show_ending() -> void:
 func _on_new_game() -> void:
 	Game.reset()
 	_start_play("kota")
+	call_deferred("_play_opening_intro")
+
+## Pembuka sinematik Kota Unggul. Semua animasi memakai Tween bawaan Godot;
+## pemain bisa melewati adegan kapan saja dengan E, Enter, atau Esc.
+func _play_opening_intro() -> void:
+	if state != "playing" or _world == null or _world.player == null:
+		return
+	_intro_active = true
+	_world.player.can_move = false
+	_intro_layer = CanvasLayer.new()
+	_intro_layer.layer = 5
+	add_child(_intro_layer)
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.modulate.a = 0.0
+	_intro_layer.add_child(root)
+	root.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			_finish_opening_intro()
+			root.accept_event()
+	)
+
+	var shade := ColorRect.new()
+	shade.color = Color(0.025, 0.04, 0.055, 0.78)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(shade)
+	var top_bar := ColorRect.new()
+	top_bar.color = Color(0.012, 0.018, 0.025, 0.98)
+	top_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	top_bar.offset_bottom = 0
+	root.add_child(top_bar)
+	var bottom_bar := ColorRect.new()
+	bottom_bar.color = Color(0.012, 0.018, 0.025, 0.98)
+	bottom_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom_bar.offset_top = 0
+	root.add_child(bottom_bar)
+
+	var title := UiKit.title("TERRA REBIRTH", 38, UiKit.GOLD)
+	title.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	title.offset_left = -360
+	title.offset_right = 360
+	title.offset_top = -100
+	title.offset_bottom = -42
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.modulate.a = 0.0
+	root.add_child(title)
+	var caption := UiKit.label("SEBUAH PERJALANAN UNTUK MEMULIHKAN TERRA", 14, UiKit.ACCENT)
+	caption.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	caption.offset_left = -400
+	caption.offset_right = 400
+	caption.offset_top = -32
+	caption.offset_bottom = 4
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.modulate.a = 0.0
+	root.add_child(caption)
+	var story := RichTextLabel.new()
+	story.bbcode_enabled = true
+	story.fit_content = true
+	story.scroll_active = false
+	story.custom_minimum_size = Vector2(820, 100)
+	story.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	story.offset_left = -410
+	story.offset_right = 410
+	story.offset_top = 38
+	story.offset_bottom = 140
+	story.add_theme_font_size_override("normal_font_size", 21)
+	story.add_theme_color_override("default_color", UiKit.TEXT)
+	story.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(story)
+	var skip := UiKit.label("E / ENTER  ·  LEWATI", 12, Color(0.78, 0.82, 0.85, 0.72))
+	skip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	skip.offset_left = -250
+	skip.offset_top = -46
+	skip.offset_right = -38
+	skip.offset_bottom = -20
+	skip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	root.add_child(skip)
+
+	var intro_tw := create_tween()
+	intro_tw.tween_property(root, "modulate:a", 1.0, 0.8)
+	intro_tw.parallel().tween_property(top_bar, "offset_bottom", 54.0, 0.8).from(0.0)
+	intro_tw.parallel().tween_property(bottom_bar, "offset_top", -54.0, 0.8).from(0.0)
+	await intro_tw.finished
+	if not _intro_active:
+		_discard_opening_intro()
+		return
+	var title_tw := create_tween()
+	title_tw.tween_property(title, "modulate:a", 1.0, 0.65)
+	title_tw.parallel().tween_property(caption, "modulate:a", 1.0, 0.9).set_delay(0.2)
+	await title_tw.finished
+	await get_tree().create_timer(2.0).timeout
+	if not _intro_active:
+		_discard_opening_intro()
+		return
+	title_tw = create_tween()
+	title_tw.tween_property(title, "modulate:a", 0.0, 0.45)
+	title_tw.parallel().tween_property(caption, "modulate:a", 0.0, 0.35)
+	await title_tw.finished
+	var scenes := [
+		"Kota Unggul pernah menjadi pusat kehidupan Terra. Kini, semuanya berubah.",
+		"Catatan data rusak. Mesin berhenti. Pesan tak lagi terbaca, dan air mulai tercemar.",
+		"Temukan penyebabnya. Pelajari empat ilmu, pulihkan wilayah, dan bangkitkan Terra kembali."
+	]
+	for line in scenes:
+		if not _intro_active:
+			_discard_opening_intro()
+			return
+		story.text = str(line)
+		story.visible_characters = 0
+		var reveal := create_tween()
+		reveal.tween_property(story, "visible_characters", str(line).length(), 1.15)
+		await reveal.finished
+		if not _intro_active:
+			_discard_opening_intro()
+			return
+		await get_tree().create_timer(2.0).timeout
+		if not _intro_active:
+			_discard_opening_intro()
+			return
+		var fade_line := create_tween()
+		fade_line.tween_property(story, "modulate:a", 0.0, 0.3)
+		await fade_line.finished
+		if not _intro_active:
+			_discard_opening_intro()
+			return
+		story.modulate.a = 1.0
+	await get_tree().create_timer(0.5).timeout
+	if not _intro_active:
+		_discard_opening_intro()
+		return
+	_finish_opening_intro(false)
+
+func _discard_opening_intro() -> void:
+	if _intro_layer != null and is_instance_valid(_intro_layer):
+		_intro_layer.queue_free()
+	_intro_layer = null
+
+func _finish_opening_intro(skipped := true) -> void:
+	if not _intro_active:
+		return
+	_intro_active = false
+	if _intro_layer != null and is_instance_valid(_intro_layer):
+		if skipped:
+			_intro_layer.visible = false
+		else:
+			_intro_layer.queue_free()
+			_intro_layer = null
+	if state == "playing" and _world != null and is_instance_valid(_world) and _world.player != null:
+		_world.player.can_move = true
 
 func _on_continue() -> void:
 	if Game.load_game():
@@ -1375,7 +1518,9 @@ func _load_map(id: String) -> void:
 
 	await get_tree().process_frame
 	var m := Content.map_by_id(id)
-	if Game.is_map_cleared(id):
+	if Game.map_total(id) == 0:
+		_toast_msg("Kota Unggul — kunjungi toko atau langsung menuju gerbang timur", 2.8)
+	elif Game.is_map_cleared(id):
 		_toast_msg("Wilayah selesai — cari gerbang bercahaya di tepi peta", 2.6)
 	else:
 		var target := _first_object_label(m)
@@ -1838,6 +1983,11 @@ func _on_pause_to_title() -> void:
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(event: InputEvent) -> void:
+	if _intro_active:
+		if event.is_action_pressed("interact") or event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel"):
+			_finish_opening_intro()
+			get_viewport().set_input_as_handled()
+		return
 	# Mode Riset dipakai untuk mengambil data pengujian, bukan fitur pemain.
 	# Tombolnya tidak dipasang di menu utama; dibuka dengan Ctrl+R dari judul
 	# atau layar peta supaya pemain biasa tidak tersandung ke layar data.

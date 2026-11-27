@@ -201,7 +201,12 @@ func set_prompt(text: String) -> void:
 		prompt_changed.emit(text)
 
 func total_done() -> int:
-	return done.size()
+	var n := 0
+	for m in Content.MAPS:
+		for c in m.get("challenges", []):
+			if done.has(str(c["id"])):
+				n += 1
+	return n
 
 func map_done(map_id: String) -> int:
 	var m := Content.map_by_id(map_id)
@@ -215,7 +220,10 @@ func map_total(map_id: String) -> int:
 	return (Content.map_by_id(map_id).get("challenges", []) as Array).size()
 
 func is_map_cleared(map_id: String) -> bool:
-	return map_total(map_id) > 0 and map_done(map_id) >= map_total(map_id)
+	var total := map_total(map_id)
+	if total == 0:
+		return map_id == "kota"
+	return map_done(map_id) >= total
 
 # ------------------------------------------------------- nyawa & bank soal
 ## Nyawa tersisa pada satu wilayah.
@@ -425,16 +433,16 @@ func grade_posttest(answers: Array) -> Dictionary:
 	var per := {}
 	for mt in Content.MATERI:
 		per[mt] = {"benar": 0, "total": 0}
-	var items := posttest_items()
-	for i in range(items.size()):
-		var item: Dictionary = items[i]
+	var test_items := posttest_items()
+	for i in range(test_items.size()):
+		var item: Dictionary = test_items[i]
 		var mt := str(item["m"])
 		per[mt]["total"] = int(per[mt]["total"]) + 1
 		var a := int(answers[i]) if i < answers.size() else -1
 		if a == int(item["a"]):
 			benar += 1
 			per[mt]["benar"] = int(per[mt]["benar"]) + 1
-	var total := items.size()
+	var total := test_items.size()
 	var nilai := int(round(float(benar) / float(total) * 100.0)) if total > 0 else 0
 	return {
 		"nilai": nilai,

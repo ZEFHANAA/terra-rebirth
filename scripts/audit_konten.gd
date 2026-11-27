@@ -104,17 +104,21 @@ func _struktur() -> void:
 		ids.append(str(m["id"]))
 		var mid := str(m["id"])
 		var chs: Array = m.get("challenges", [])
-		ok(chs.size() > 0, "%s punya tantangan" % mid)
+		if mid == "kota":
+			ok(chs.is_empty(), "%s tidak punya tantangan (hub)" % mid)
+		else:
+			ok(chs.size() > 0, "%s punya tantangan" % mid)
 		var uniq := {}
 		for c in chs:
 			uniq[str(c["id"])] = true
 		ok(uniq.size() == chs.size(), "%s: id tantangan unik (%d)" % [mid, chs.size()])
-		var last: Dictionary = chs[chs.size() - 1]
-		for c in chs:
-			if not c.has("bank_materi"):
-				last = c
-		if mid != "kota":
-			ok(bool(last.get("final", false)), "%s: tantangan terakhir ditandai final" % mid)
+		if not chs.is_empty():
+			var last: Dictionary = chs[chs.size() - 1]
+			for c in chs:
+				if not c.has("bank_materi"):
+					last = c
+			if mid != "kota":
+				ok(bool(last.get("final", false)), "%s: tantangan terakhir ditandai final" % mid)
 		# badge & syarat
 		var badge := str(m.get("badge", ""))
 		if mid == "kota" or mid == "source":
@@ -130,7 +134,7 @@ func _struktur() -> void:
 		if m.has("objects"):
 			ok((m["objects"] as Array).size() > 0, "%s: objek pencarian terdaftar" % mid)
 	ok(ids.size() == 6, "jumlah map = 6")
-	ok(Content.total_challenges() == 22, "total tantangan dasar = 22 (bank ditambahkan saat map dimuat)")
+	ok(Content.total_challenges() == 20, "total tantangan dasar = 20 (bank ditambahkan saat map dimuat)")
 	# materi: satu map per materi, urutan tetap
 	for mt in Content.MATERI:
 		var found := 0
@@ -138,8 +142,8 @@ func _struktur() -> void:
 			if str(m.get("material", "")) == mt:
 				found += 1
 		ok(found == 1, "materi '%s' muncul di tepat satu map" % mt)
-	# kota 2 quest pengantar, map materi mengikuti desain puzzle baru
-	ok((Content.map_by_id("kota")["challenges"] as Array).size() == 2, "Kota Unggul = 2 quest pengantar")
+	# kota hub tanpa quest, map materi mengikuti desain puzzle baru
+	ok((Content.map_by_id("kota")["challenges"] as Array).is_empty(), "Kota Unggul = hub tanpa tantangan")
 	ok((Content.map_by_id("hutan")["challenges"] as Array).size() == 10, "hutan = 3 quest + 2 puzzle + 5 soal bank")
 	ok((Content.map_by_id("pabrik")["challenges"] as Array).size() == 11, "pabrik = 4 quest + 2 puzzle + 5 soal bank")
 	ok((Content.map_by_id("candi")["challenges"] as Array).size() == 12, "candi = 5 quest + 2 puzzle + 5 soal bank")
@@ -474,7 +478,7 @@ func _npc() -> void:
 		var ns := Content.npcs_of(m)
 		ok(ns.size() >= 1, "%s: punya NPC (%d)" % [mid, ns.size()])
 		if mid == "kota":
-			ok(ns.size() == 4, "kota: 4 NPC sesuai rancangan (didapat %d)" % ns.size())
+			ok(ns.size() == 6, "kota: 6 NPC sesuai rancangan (didapat %d)" % ns.size())
 		var ids := {}
 		var nama := {}
 		var teks := ""

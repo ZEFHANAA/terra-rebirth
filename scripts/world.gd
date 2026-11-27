@@ -99,13 +99,15 @@ func _build_props() -> void:
 		var sc := h / float(tex.get_height())
 		var spr := Sprite2D.new()
 		spr.texture = tex
-		spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if str(it.get("n", "")) == "fountain" else CanvasItem.TEXTURE_FILTER_LINEAR
 		spr.centered = true
 		spr.offset = Vector2(0, -tex.get_height() * 0.5)
 		spr.scale = Vector2(sc, sc)
 		spr.flip_h = bool(it.get("f", false))
 		spr.position = Vector2(float(it.get("x", 0.0)), float(it.get("y", 0.0)))
 		actors.add_child(spr)
+		if str(it.get("n", "")) == "fountain":
+			_add_fountain_effect(spr)
 		_add_prop_body(str(it.get("n", "tree_big")), spr.position)
 		if str(it.get("n", "")) in ["tree_big", "bush"]:
 			prop_fade.append(spr)
@@ -126,6 +128,21 @@ func _add_prop_body(kind: String, pos: Vector2) -> void:
 		"bldg_shop", "bldg_house", "bldg_office":
 			size = Vector2(110, 46)
 			off = -18.0
+		"house":
+			size = Vector2(150, 44)
+			off = -20.0
+		"castle_sq", "castle_rnd", "hall":
+			size = Vector2(160, 48)
+			off = -22.0
+		"windmill", "stone_tower", "watchtower":
+			size = Vector2(100, 44)
+			off = -20.0
+		"fountain":
+			size = Vector2(58, 22)
+			off = -11.0
+		"well":
+			size = Vector2(78, 42)
+			off = -22.0
 		_:
 			return
 	var body := StaticBody2D.new()
@@ -189,6 +206,41 @@ func _build_collisions() -> void:
 				x += 1
 
 static var _shadow_tex: Texture2D = null
+static var _water_drop_tex: Texture2D = null
+
+func _water_drop_texture() -> Texture2D:
+	if _water_drop_tex != null:
+		return _water_drop_tex
+	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	var drop := Color(0.42, 0.88, 1.0, 0.95)
+	var glint := Color(0.88, 0.98, 1.0, 1.0)
+	for p in [Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1), Vector2i(4, 1),
+		Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 2), Vector2i(5, 2),
+		Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3),
+		Vector2i(2, 4), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5)]:
+		img.set_pixel(p.x, p.y, glint if p == Vector2i(2, 2) else drop)
+	_water_drop_tex = ImageTexture.create_from_image(img)
+	return _water_drop_tex
+
+func _add_fountain_effect(fountain: Sprite2D) -> void:
+	var spray := CPUParticles2D.new()
+	spray.name = "FountainSpray"
+	spray.position = Vector2(0, -116)
+	spray.texture = _water_drop_texture()
+	spray.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	spray.amount = 10
+	spray.lifetime = 0.9
+	spray.preprocess = 0.45
+	spray.emitting = true
+	spray.direction = Vector2(0, -1)
+	spray.spread = 32.0
+	spray.gravity = Vector2(0, 190)
+	spray.initial_velocity_min = 42.0
+	spray.initial_velocity_max = 68.0
+	spray.scale_amount_min = 0.55
+	spray.scale_amount_max = 0.9
+	spray.color = Color(0.55, 0.9, 1.0, 0.92)
+	fountain.add_child(spray)
 
 ## Bayangan kontak lembut agar karakter tidak terlihat melayang.
 func _shadow_texture() -> Texture2D:
@@ -206,7 +258,7 @@ func _shadow_texture() -> Texture2D:
 	_shadow_tex = ImageTexture.create_from_image(img)
 	return _shadow_tex
 
-func _add_shadow(pos: Vector2, sx: float = 1.0) -> void:
+func _add_shadow(pos: Vector2, sx: float = 1.0) -> Sprite2D:
 	var sh := Sprite2D.new()
 	sh.texture = _shadow_texture()
 	sh.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -214,6 +266,7 @@ func _add_shadow(pos: Vector2, sx: float = 1.0) -> void:
 	sh.scale = Vector2(sx, sx)
 	sh.z_index = -10
 	add_child(sh)
+	return sh
 
 ## Label nama dengan latar pil gelap supaya tidak perlu outline tebal.
 func _name_plate(text: String, color: Color) -> Label:
@@ -238,12 +291,14 @@ func _build_npcs() -> void:
 	for n in list:
 		var spr := AnimatedSprite2D.new()
 		var tex: Texture2D = load("res://assets/sprites/npc_%s.png" % str(n.get("sprite", "kepala")))
-		spr.sprite_frames = _npc_frames(tex)
+		var patrol_enabled: bool = n.has("patrol") and not (n.get("patrol", []) as Array).is_empty()
+		spr.sprite_frames = _npc_frames(tex, patrol_enabled)
 		spr.play("idle_down")
-		# Sheet NPC lama berukuran 96x144 per frame, sheet baru 24x32. Sprite
-		# baru diperbesar supaya tinggi tubuhnya sama dengan NPC lain.
-		var sk := 144.0 / _npc_frame_size(tex).y
-		spr.scale = Vector2(sk, sk)
+		# NPC lama memakai frame 96x144. Sprite baru 32x32 harus diperbesar
+		# secara seragam agar bentuk tubuhnya tidak menjadi kurus dan tinggi.
+		var frame_size := _npc_frame_size(tex)
+		var npc_scale := Vector2.ONE if frame_size == Vector2(96, 144) else Vector2(96.0 / frame_size.x, 96.0 / frame_size.y)
+		spr.scale = npc_scale
 		if OS.get_environment("TERRA_NPCDBG") != "":
 			print("NPC ", n.get("name"), " frames=", spr.sprite_frames.get_frame_count("idle_down"),
 				" speed=", spr.sprite_frames.get_animation_speed("idle_down"),
@@ -253,15 +308,21 @@ func _build_npcs() -> void:
 		var kaki := tile_center(tx, ty) + Vector2(0, 16)
 		# Titik urut gambar (y-sort) diletakkan di kaki, bukan di tengah badan,
 		# supaya pemain yang lewat di depan NPC benar-benar tergambar di depan.
-		# Gambar digeser ke atas lewat offset supaya tampilannya tidak berubah.
-		spr.offset = Vector2(0, -72.0 / sk)
+		# Letakkan dasar frame tepat di kaki NPC.
+		spr.offset = Vector2(0, -frame_size.y * 0.5)
 		spr.position = kaki
 		spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		actors.add_child(spr)
-		_add_shadow(kaki + Vector2(0, -2), 0.95)
+		var npc_shadow := _add_shadow(kaki + Vector2(0, -2), 0.95)
 
 		# tabrakan kaki NPC: pemain tidak bisa menembus tubuh NPC
-		var nbody := StaticBody2D.new()
+		var nbody: PhysicsBody2D
+		if patrol_enabled:
+			var moving_body := AnimatableBody2D.new()
+			moving_body.sync_to_physics = true
+			nbody = moving_body
+		else:
+			nbody = StaticBody2D.new()
 		nbody.position = kaki + Vector2(0, -16)
 		var ncs := CollisionShape2D.new()
 		var nshape := RectangleShape2D.new()
@@ -294,23 +355,56 @@ func _build_npcs() -> void:
 			mark.position = kaki + Vector2(-mark.size.x * 0.5, -176)
 
 		var fsz := spr.sprite_frames.get_frame_texture("idle_down", 0).get_size()
-		_bodies.append(Rect2(spr.position + (-fsz * 0.5 + spr.offset) * sk, fsz * sk))
+		_bodies.append(Rect2(spr.position + Vector2(-fsz.x * 0.5 * npc_scale.x, (-fsz.y * 0.5 + spr.offset.y) * npc_scale.y),
+			Vector2(fsz.x * npc_scale.x, fsz.y * npc_scale.y)))
+		var patrol_points: Array[Vector2] = []
+		if patrol_enabled:
+			for point in n.get("patrol", []):
+				patrol_points.append(tile_center(int(point[0]), int(point[1])) + Vector2(0, 16))
 		npcs.append({"id": str(n.get("id", "utama")), "name": str(n.get("name", "NPC")),
-			"action": str(n.get("action", "quest")), "node": spr, "mark": mark})
+			"action": str(n.get("action", "quest")), "node": spr, "mark": mark,
+			"body": nbody, "plate": lb, "shadow": npc_shadow, "patrol": patrol_points,
+			"patrol_index": 1 if patrol_points.size() > 1 else 0,
+			"patrol_wait": 0.0, "patrol_speed": float(n.get("patrol_speed", 36.0))})
 		if npc_node == null:
 			npc_node = spr
 
 ## Ukuran satu frame pada sheet NPC.
 ## Sheet lama: 384x576 -> 4 kolom x 4 baris, frame 96x144.
-## Sheet baru: 72x128  -> 3 kolom x 4 baris, frame 24x32.
+## Sheet baru: 96x128   -> 3 kolom x 4 baris, frame 32x32.
 func _npc_frame_size(tex: Texture2D) -> Vector2:
 	if tex.get_width() >= 384:
 		return Vector2(96, 144)
+	if tex.get_width() == 96 and tex.get_height() == 128:
+		return Vector2(32, 32)
 	return Vector2(float(tex.get_width()) / 3.0, float(tex.get_height()) / 4.0)
 
-func _npc_frames(tex: Texture2D) -> SpriteFrames:
+func _npc_frames(tex: Texture2D, add_walk: bool = false) -> SpriteFrames:
 	var sf := SpriteFrames.new()
 	sf.remove_animation("default")
+	if add_walk:
+		var fr := _npc_frame_size(tex)
+		var rows := {"down": 0, "left": 1, "right": 2, "up": 3}
+		for direction in rows:
+			var row: int = rows[direction]
+			var idle_name := "idle_%s" % direction
+			sf.add_animation(idle_name)
+			sf.set_animation_speed(idle_name, 1.0)
+			sf.set_animation_loop(idle_name, true)
+			var idle_frame := AtlasTexture.new()
+			idle_frame.atlas = tex
+			idle_frame.region = Rect2(fr.x, row * fr.y, fr.x, fr.y)
+			sf.add_frame(idle_name, idle_frame)
+			var walk_name := "walk_%s" % direction
+			sf.add_animation(walk_name)
+			sf.set_animation_speed(walk_name, 7.0)
+			sf.set_animation_loop(walk_name, true)
+			for col in range(3):
+				var walk_frame := AtlasTexture.new()
+				walk_frame.atlas = tex
+				walk_frame.region = Rect2(col * fr.x, row * fr.y, fr.x, fr.y)
+				sf.add_frame(walk_name, walk_frame)
+		return sf
 	sf.add_animation("idle_down")
 	var fr := _npc_frame_size(tex)
 	# dua frame (kolom 0 dan 2) supaya NPC ikut "bernapas", tidak seperti gambar mati
@@ -476,14 +570,14 @@ func _build_player() -> void:
 	var p := CharacterBody2D.new()
 	p.set_script(load("res://scripts/player.gd"))
 	var spawn: Vector2 = SPAWNS.get(map_id, Vector2(20, 18))
-	p.position = tile_center(int(spawn.x), int(spawn.y)) + Vector2(0, -6)
+	p.position = tile_center(int(spawn.x), int(spawn.y))
 	player = p
 	actors.add_child(p)
 
 	var sh := Sprite2D.new()
 	sh.texture = _shadow_texture()
 	sh.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sh.position = Vector2(0, 12)
+	sh.position = Vector2(0, 8)
 	sh.z_index = -1
 	sh.z_as_relative = true
 	p.add_child(sh)
@@ -525,6 +619,7 @@ func _process(delta: float) -> void:
 	_t += delta
 	_update_camera()
 	_fade_canopy(delta)
+	_update_npc_patrols(delta)
 	_animate_marks()
 	objective_changed.emit(next_objective())
 	var target := ""
@@ -533,9 +628,10 @@ func _process(delta: float) -> void:
 		var node: Node2D = n["node"]
 		var d := player.position.distance_to(node.position + Vector2(0, 30))
 		# NPC menoleh ke sisi tempat pemain berdiri supaya terasa hidup.
-		var face_left: bool = player.position.x < node.position.x - 4.0
-		if node is AnimatedSprite2D and node.flip_h != face_left:
-			node.flip_h = face_left
+		if (n.get("patrol", []) as Array).is_empty():
+			var face_left: bool = player.position.x < node.position.x - 4.0
+			if node is AnimatedSprite2D and node.flip_h != face_left:
+				node.flip_h = face_left
 		if d < best:
 			best = d
 			target = "npc:" + str(n["id"])
@@ -556,6 +652,42 @@ func _process(delta: float) -> void:
 		_prompt_target = target
 		_emit_prompt(target)
 
+func _update_npc_patrols(delta: float) -> void:
+	for n in npcs:
+		var route: Array = n.get("patrol", [])
+		if route.is_empty():
+			continue
+		var node := n["node"] as AnimatedSprite2D
+		var body := n["body"] as PhysicsBody2D
+		var wait := float(n.get("patrol_wait", 0.0))
+		if wait > 0.0:
+			n["patrol_wait"] = maxf(0.0, wait - delta)
+			node.play("idle_%s" % str(n.get("patrol_facing", "down")))
+			continue
+		var index := int(n.get("patrol_index", 0)) % route.size()
+		var target: Vector2 = route[index]
+		var offset := target - node.position
+		var distance := offset.length()
+		if distance <= 1.0:
+			node.position = target
+			n["patrol_index"] = (index + 1) % route.size()
+			n["patrol_wait"] = 0.55
+			node.play("idle_%s" % str(n.get("patrol_facing", "down")))
+		else:
+			var direction := offset / distance
+			node.position += direction * minf(float(n.get("patrol_speed", 36.0)) * delta, distance)
+			var horizontal := absf(direction.x) > absf(direction.y)
+			var facing := "right" if horizontal and direction.x > 0.0 else "left" if horizontal else "down" if direction.y > 0.0 else "up"
+			n["patrol_facing"] = facing
+			node.play("walk_%s" % facing)
+		body.position = node.position + Vector2(0, -16)
+		(n["shadow"] as Sprite2D).position = node.position + Vector2(0, -2)
+		var plate := n["plate"] as Label
+		plate.position = _clamp_label(node.position + Vector2(-plate.size.x * 0.5, 2), plate.size.x)
+		var mark = n.get("mark")
+		if mark != null:
+			mark.position = node.position + Vector2(-mark.size.x * 0.5, -176)
+
 ## Penanda "!" naik-turun halus, dan hilang bila wilayah sudah selesai.
 func _animate_marks() -> void:
 	var cleared := Game.is_map_cleared(map_id)
@@ -572,8 +704,8 @@ func _animate_marks() -> void:
 		var active := _object_active(o)
 		(o["node"] as Node2D).visible = active
 		var om = o["mark"]
-		om.visible = active
-		if active:
+		om.visible = active and _object_is_quest(o)
+		if om.visible:
 			var obase: Vector2 = o["node"].position
 			om.position = obase + Vector2(-om.size.x * 0.5, -78 + bob)
 	if _focus != null:
@@ -608,7 +740,7 @@ func next_objective() -> Dictionary:
 	var best := {}
 	var best_d := 1e9
 	for o in objects:
-		if not _object_active(o):
+		if not _object_active(o) or not _object_is_quest(o):
 			continue
 		var node := o["node"] as Node2D
 		if node == null:
@@ -667,6 +799,10 @@ func _marked_target_of(target: String) -> Dictionary:
 			return {}
 		return {"pos": nnode.position, "name": str(n.get("name", "NPC"))}
 	return {}
+
+func _object_is_quest(o: Dictionary) -> bool:
+	var data: Dictionary = o["data"]
+	return data.has("challenge") or bool(data.get("bank", false)) or bool(data.get("puzzle", false))
 
 func _object_active(o: Dictionary) -> bool:
 	var data: Dictionary = o["data"]
